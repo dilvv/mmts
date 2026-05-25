@@ -1,5 +1,7 @@
 # MMTS
 
+[中文说明](./README.zh-CN.md)
+
 This repository contains two main parts:
 
 - `PLC_toolkits_mqtt_NTU`
@@ -129,3 +131,4 @@ python MultiModuleTeststandUI/scripts/run_full_mmts_batch.py -c MultiModuleTests
 - The new automation scripts were added alongside the original manual workflow.
 - The demo runner and the formal runner are intentionally separate.
 - The UI-specific README remains under `MultiModuleTeststandUI/README.md`.
+- A Chinese project-level README is available at `README.zh-CN.md`.
