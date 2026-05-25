@@ -126,6 +126,26 @@ python MultiModuleTeststandUI/scripts/run_full_mmts_batch_demo.py -c MultiModule
 python MultiModuleTeststandUI/scripts/run_full_mmts_batch.py -c MultiModuleTeststandUI/data/full_batch_config.example.yml
 ```
 
+## Windows 本地启动 task3 页面
+
+如果你想在 Windows 上单独启动 `app_task3.py` 做页面测试，可以先进入项目目录，再设置环境变量，并使用项目自己的虚拟环境：
+
+```powershell
+cd C:\Users\12784\Documents\mmts\repo\MultiModuleTeststandUI
+$env:AndrewModuleTestingGUI_BASE='C:\Users\12784\Documents\mmts\repo\MultiModuleTeststandUI\external_packages\hgcal-module-testing-gui'
+$env:PYTHONPATH='C:\Users\12784\Documents\mmts\repo\MultiModuleTeststandUI'
+.\.venv\Scripts\python.exe .\flask_apps\app_task3.py
+```
+
+启动后打开：
+
+- `http://127.0.0.1:5005/`
+
+说明：
+
+- `app.py` 是完整的 MMTS 网页入口，通常使用端口 `5001`
+- `flask_apps/app_task3.py` 是单独抽出来做本地测试的 task3 页面，使用端口 `5005`
+
 ## 备注
 
 - 新增的自动化脚本是叠加在原有手动流程上的，并没有移除手动流程。

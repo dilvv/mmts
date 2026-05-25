@@ -126,6 +126,26 @@ Example:
 python MultiModuleTeststandUI/scripts/run_full_mmts_batch.py -c MultiModuleTeststandUI/data/full_batch_config.example.yml
 ```
 
+## Windows Local Task3 Startup
+
+If you want to run only `app_task3.py` locally on Windows for page testing, use the project virtual environment and set the required environment variables first:
+
+```powershell
+cd C:\Users\12784\Documents\mmts\repo\MultiModuleTeststandUI
+$env:AndrewModuleTestingGUI_BASE='C:\Users\12784\Documents\mmts\repo\MultiModuleTeststandUI\external_packages\hgcal-module-testing-gui'
+$env:PYTHONPATH='C:\Users\12784\Documents\mmts\repo\MultiModuleTeststandUI'
+.\.venv\Scripts\python.exe .\flask_apps\app_task3.py
+```
+
+Then open:
+
+- `http://127.0.0.1:5005/`
+
+Notes:
+
+- `app.py` is the full MMTS web UI and normally uses port `5001`.
+- `flask_apps/app_task3.py` is the standalone task3 page for local testing and uses port `5005`.
+
 ## Notes
 
 - The new automation scripts were added alongside the original manual workflow.
