@@ -8,6 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from wtforms.validators import DataRequired, Regexp, InputRequired, NumberRange
 from wtforms import StringField, SubmitField, RadioField, IntegerField
 import flask_apps.shared_state as shared_state
+from PythonTools.batch_status import read_status
 from PythonTools.server_status import isCommandRunable
 import re
 import os
@@ -490,7 +491,12 @@ def status():
     
     ### if something updated, list all sub directories as list. Or return empty list
     daq_result_dirs = [ subdir for subdir in os.listdir(dirDAQresult) if os.path.isdir(f'{dirDAQresult}/{subdir}') ] if hasupdate else []
-    return jsonify( {'status':shared_state.server_status, 'jobmode': shared_state.jobmode, 'DAQres': daq_result_dirs} )
+    return jsonify({
+        'status': shared_state.server_status,
+        'jobmode': shared_state.jobmode,
+        'DAQres': daq_result_dirs,
+        'batchStatus': read_status(base_dir=os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))),
+    })
 
 
 @app.route('/main.html')
@@ -503,7 +509,13 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
                         format='[basicCONFIG] %(levelname)s - %(message)s',
                         datefmt='%H:%M:%S')
-    app_main = Flask(__name__)
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    app_main = Flask(
+        __name__,
+        template_folder=os.path.join(base_dir, 'templates'),
+        static_folder=os.path.join(base_dir, 'static'),
+        static_url_path='/static',
+    )
     app_main.register_blueprint(app, url_prefix='/task3')
     app_main.config["SECRET_KEY"] = '7eCZ^6nUxb6hjN5EbLYak&fvt'
     csrf = CSRFProtect(app_main)
@@ -511,5 +523,5 @@ if __name__ == '__main__':
 
     @app_main.route("/")
     def index():
-        return render_template("index_task3.html")
+        return main()
     app_main.run(debug=True, port=5005)
