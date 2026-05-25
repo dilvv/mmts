@@ -1,0 +1,58 @@
+.PHONY: help
+
+check_defined = \
+    $(strip $(foreach 1,$1, \
+    $(call __check_defined,$1,$(strip $(value 2)))))
+__check_defined = \
+    $(if $(value $1),, \
+    $(error Undefined $1$(if $2, ($2))))
+
+
+
+setup1_guide_to_clone_AndrewGUI: ## clone Andrew's GUI and edit configuration (option)
+	@echo -e "cloning Andrew Robert's GUI and modify configuration.yaml if repo does not exist\n\n"
+	@echo '[CMDtoExec] git clone https://gitlab.cern.ch/ltsai/hgcal-module-testing-gui.git -b mmts '## clone modified branch
+	@echo '[CMDtoExec] cd hgcal-module-testing-gui && python3 writeconfig.py'
+	@echo '[CMDtoExec] nano hgcal-module-testing-gui/configuration.yaml'
+_setup1_clone_andrewGUI: # clone Andrew's GUI and edit configuration
+	echo "cloning Andrew Robert's GUI and modify configuration.yaml"
+	#git clone https://gitlab.cern.ch/acrobert/hgcal-module-testing-gui.git
+	git clone https://gitlab.cern.ch/ltsai/hgcal-module-testing-gui.git -b mmts ## clone modified branch
+	cd hgcal-module-testing-gui && python3 writeconfig.py
+	read -p 'editing configuration file "hgcal-module-testing-gui/configuration.yaml"'
+	nano hgcal-module-testing-gui/configuration.yaml
+
+nodataPLOT := data/daqplots.nodata.png
+setup2_create_daq_storage: ## According to Andrew's configuration, create dir "daqplots" in DataLoc and put default png file in this folder
+	read -p 'modify init_bash_vars.sh, especially for variable "AndrewModuleTestingGUI_BASE"'
+	cp data/init_bash_vars.sh.template init_bash_vars.sh
+	nano init_bash_vars.sh
+	source ./init_bash_vars.sh; \
+		echo [LoadedVar] directory loading Andrew ModuleTestGUI: $$AndrewModuleTestingGUI_BASE; \
+		read -p "create sub directory from conf['DataLoc'] in $$AndrewModuleTestingGUI_BASE/configuration.yaml"; \
+		echo "mkdir directory conf['DataLoc']/daqplots/ according to $${AndrewModuleTestingGUI_BASE/configuration.yaml}"; \
+		data_loc=`python3 scripts/access_yaml_var.py $$AndrewModuleTestingGUI_BASE/configuration.yaml DataLoc`; echo "Loaded DataLoc = $${data_loc}"; \
+		mkdir -p $${data_loc}/daqplots ; cp $(nodataPLOT) $${data_loc}/
+setup3_create_daqclient_service: ## edit daq-client.service for using port 6001~6020. And put them into ~/.config/systemd/user/. Use `systemctl --user restart daq-client-port6001.service` to active service
+	echo "creating daq-client-port*.service in ~/.config/systemd/user/"
+	sh scripts/setup.create_daqclients.sh
+
+step4_modify_teststand_IP_address: ## create and modify data/mmts_configurations.yaml
+	echo create and edit data/mmts_configurations.yaml 
+	cp data/mmts_configurations.yaml.template data/mmts_configurations.yaml
+	nano data/mmts_configurations.yaml
+
+step5_open_firewall_port5001: ## open firewall port 5001 such you can access server http://127.0.0.1:5001 
+	echo requesting permission for opening firewall port 5001
+	sudo sh data/open_firewall.sh
+
+all: setup1_clone_andrewGUI setup2_create_daq_storage setup3_create_daqclient_service step4_modify_teststand_IP_address
+
+
+IN_ARGS = [opts]
+
+help:  ## Display this help
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[32m<command>\033[0m $(IN_ARGS)\n\nCommands:\n\033[36m\033[0m\n"} /^[0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+.DEFAULT_GOAL := help
+

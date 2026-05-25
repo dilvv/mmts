@@ -1,0 +1,25 @@
+DBDatabase: hgcdb
+DBHostname: '192.168.50.213'
+DBPassword: ''
+DBUsername: postgres
+DataLoc: /home/ntucms/workspace/testdata/
+DebugMode: false
+DefaultFontSize: '15'
+FPGAHostname:
+- 192.168.50.152
+FPGAType:
+- Kria
+HVDiscoveryMode: by-resource
+HVResource: ASRL/dev/ttyUSB0::INSTR
+HVTerminal: Rear
+HVWiresPolarization: Reverse
+HasHVSwitch: true
+HasLocalDB: true
+HasRHSensor: false
+HexactrlSWBranch: ROCv3
+Inspectors:
+- ltsai-test
+- akallilt
+MACSerial: NT
+PCKeyLoc: /home/ntucms/.ssh/HGCtrler_key_kria
+TestingPCOpSys: Alma9

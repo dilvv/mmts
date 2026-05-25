@@ -1,0 +1,99 @@
+.PHONY: help
+
+check_defined = \
+    $(strip $(foreach 1,$1, \
+    $(call __check_defined,$1,$(strip $(value 2)))))
+__check_defined = \
+    $(if $(value $1),, \
+    $(error Undefined $1$(if $2, ($2))))
+
+
+
+
+
+### task1 pedestal run
+andrewGUI_install_path := external_packages/hgcal-module-testing-gui
+andrewGUI_default_path  = external_packages/hgcal-module-testing-gui
+task1a_setup_andrewGUI: ## clone Andrew's GUI and edit configuration. If you installed andrewGUI, use andrewGUI_install_path to link folder. [andrewGUI_install_path=/some/path/to/hgcal-module-testing-gui]
+	if [ -d "$(andrewGUI_default_path)" ]; then echo "[AlreadyExists] Skip installing andrew module test GUI since it existed in path $(andrewGUI_default_path)"; \
+	elif [ -d "$(andrewGUI_install_path)" ]; then echo "[LinkFolder] Link $(andrewGUI_install_path) to $(andrewGUI_default_path)"; ln -s `realpath $(andrewGUI_install_path)` $(andrewGUI_default_path); \
+	else git clone https://gitlab.cern.ch/acrobert/hgcal-module-testing-gui.git $(andrewGUI_default_path); \
+	fi
+	if [ -f "$(andrewGUI_default_path)/configuration.yaml" ]; then echo "[ConfigExisted] Use $(andrewGUI_default_path)/configuration.yaml instead of creating new one."; fi
+
+
+task1b_create_daqclient_service: ## edit daq-client.service for using port 6002~6025. And put them into ~/.config/systemd/user/. Use `systemctl --user restart daq-client-port6001.service` to active service
+	echo "creating daq-client-port*.service in ~/.config/systemd/user/"
+	sh scripts/setup.create_daqclients.sh
+
+
+task1c_create_output_folder: ## make directory from hgcal-module-testing-gui/configuration.yaml
+	echo "mkdir directory conf['DataLoc']/daqplots/ according to $${$(andrewGUI_default_path)/configuration.yaml}"; \
+	data_loc=`python3 scripts/access_yaml_var.py $(andrewGUI_default_path)/configuration.yaml DataLoc`; echo "Loaded DataLoc = $${data_loc}"; \
+	read -p "create sub directory "$${data_loc}" from conf['DataLoc'] in $(andrewGUI_default_path)/configuration.yaml"; \
+	mkdir -p $${data_loc}/daqplots ; cp $(nodataPLOT) $${data_loc}/
+
+
+### task3 IV scan setup
+youyingSCRIPT_default_path = external_packages/HGCal_Module_Production_Toolkit
+task3a_clone_IVscan_codes: ## clone IV scan packages
+	if [ -d "external_packages/HGCal_Module_Production_Toolkit" ]; then \
+		echo "[ExistedPackage] youying's package (IV scan) found"; \
+	else \
+		echo "[Install youying's package (IV scan)] initialize 'HGCal_Module_Production_Toolkit' from youying "; \
+		git clone https://github.com/ltsai323/HGCal_Module_Production_Toolkit.git $(youyingSCRIPT_default_path); \
+	fi
+
+nodataPLOT := data/daqplots.nodata.png
+task3b_create_mmts_configuration: ## create mmts_configuration
+	python3 scripts/setup.mmts_configurations.py 
+	nano data/mmts_configurations.yaml
+	ln -s $$PWD/data/mmts_configurations.yaml external_packages/HGCal_Module_Production_Toolkit/configuration.yaml ### use configuration.yaml in youying's repo
+	if [ ! -f "$(andrewGUI_default_path)/configuration.yaml" ]; then ln -s $$PWD/data/mmts_configurations.yaml $(andrewGUI_default_path)/configuration.yaml; fi
+
+
+
+
+
+
+### flask related setup
+flaska_open_firewall_port5001: ## open firewall port 5001 such you can access server http://127.0.0.1:5001 
+	echo requesting permission for opening firewall port 5001
+	sudo sh scripts/open_firewall.sh
+
+
+### use python virtual environment to activate this app
+flaskb_make_virtual_environment: ## create python virtual envuironment
+	python3 -m venv .venv ; \
+	source .venv/bin/activate ; \
+	pip3 install   flask   flask-socketio   requests   sphinx   paramiko   pyvisa   pyvisa-py   pyyaml   flask-wtf   myst-parser   flask-cors   pymeasure   psycopg psycopg2-binary ; \
+	sudo yum install firewalld
+	#sudo apt update
+	#sudo apt install python3-psycopg python3-psycopg-c
+	#sudo apt update && sudo apt install firewalld
+
+flaskc_make_app_as_system_service: ## make this MultimoduleTeststandUI as a system service
+	chmod +x ./app.py
+	### edit path in `data/MMTS.service` and `data/MMTS.service.variables`
+	python3 data/MMTS.service.createscript.py
+	sudo cp data/MMTS.service /etc/systemd/system/
+	sudo systemctl daemon-reload
+	sudo systemctl start MMTS.service ### activate service
+	sudo systemctl enable MMTS.service ### activate service
+	#sudo systemctl stop  MMTS.service ### stop service
+	#journalctl -u MMTS.service  ### check error messages
+
+all: \
+	task1a_setup_andrewGUI task1b_create_daqclient_service task1c_create_output_folder \
+	task3a_clone_IVscan_codes task3b_create_mmts_configuration \
+	flaska_modify_teststand_IP_address flaskb_open_firewall_port5001 flaskc_make_virtual_environment flaskd_make_app_as_system_service
+
+
+
+IN_ARGS = [opts]
+
+help:  ## Display this help
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[32m<command>\033[0m $(IN_ARGS)\n\nCommands:\n\033[36m\033[0m\n"} /^[0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+.DEFAULT_GOAL := help
+

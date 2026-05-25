@@ -1,0 +1,19 @@
+
+[Unit]
+Description=MultiModuleTeststand web server
+After=network.target nss-user-lookup.target
+
+[Service]
+Type=idle
+User=mmts
+WorkingDirectory=/home/mmts/MultiModuleTeststandUI
+Environment="PATH=/home/mmts/MultiModuleTeststandUI/.venv/bin:/home/mmts/.local/bin:/home/mmts/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin"
+Environment="PYTHONPATH=/home/mmts/MultiModuleTeststandUI:"
+Environment="LOG_LEVEL=INFO"
+Environment="BASH_SCRIPT_FOLDER=/home/mmts/MultiModuleTeststandUI/scripts/task2_pedestalrun/"
+Environment="AndrewModuleTestingGUI_BASE=/home/mmts/MultiModuleTeststandUI/external_packages/hgcal-module-testing-gui"
+ExecStart=/home/mmts/MultiModuleTeststandUI/.venv/bin/python3 app.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

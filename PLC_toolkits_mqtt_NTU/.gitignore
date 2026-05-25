@@ -1,0 +1,8 @@
+config.ini
+*.env
+*.auth
+
+__pycache__/
+.python-version
+
+backup_code/

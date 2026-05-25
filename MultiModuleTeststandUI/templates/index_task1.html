@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pedestal Run</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+</head>
+<body id="i3bn">
+  <section id="ij10l" class="flex-sect">
+    <div id="it8wd" class="container-width">
+      <div id="ihtsc" class="flex-title">Single pedestal run
+      </div>
+      <div id="idewg" class="gjs-row">
+        <div id="i1sqf" class="gjs-cell">
+          <button type="button" id="initBtn"          class="ctrlbtn" onclick="initJob()">Initialize</button>
+          <button type="button" id="confBtn" disabled class="ctrlbtn"                    >Configure</button>
+          <button type="button" id="execBtn" disabled class="ctrlbtn" onclick="execJob()">Run</button>
+          <button type="button" id="stopBtn" disabled class="ctrlbtn" onclick="stopJob()">Stop</button>
+          <button type="button" id="exitBtn" disabled class="ctrlbtn" onclick="exitJob()">Destroy</button>
+        </div>
+        <div id="i5xn8" class="gjs-cell">
+          <div id="statusText">This is my status area
+          </div>
+        </div>
+      </div>
+      <form method="POST" id="pymodule_configurations" action="/task1/submit">
+        <meta name="csrf_token" type="hidden" content="{{ csrf_token() }}"/>
+        <br/>
+        <!-- === New Radio Buttons === -->
+        <div id="radioContainer" class="cards">
+          <div id="iql44" class="gjs-row">
+            <div class="gjs-cell" id="inta7e">
+              <div id="i8wfow">Module Status:
+              </div>
+            </div>
+            <div class="gjs-cell" id="itq9y3">
+              <input list="inspectors" name="inspector" id="iwgoh5">
+              <datalist id="inspectors">
+                {% for inspector in inspectors %}
+                <option value="{{inspector}}">
+                {% endfor %}
+              </datalist>
+              <div id="i109v8">inspector: 
+              </div>
+            </div>
+          </div>
+          <div id="iql44" class="gjs-row">
+            <div id="ig3nn" class="gjs-cell form-row">
+              <label id="iy4ud"><input type="radio" name="moduleSTATUS" value="Untaped"/> Untaped</label>
+            </div>
+            <div id="ie7gk" class="gjs-cell form-row">
+              <label id="iio4i"><input type="radio" name="moduleSTATUS" value="Taped"/> Taped</label>
+            </div>
+            <div id="i0vy1u" class="gjs-cell form-row">
+              <label id="i6hsb"><input type="radio" name="moduleSTATUS" value="Assembled" id="iyosa-2"/> Assembled</label>
+            </div>
+            <div id="ipxwp" class="gjs-cell form-row">
+              <label id="ikckl"><input type="radio" name="moduleSTATUS" value="Bonds Reworked"/> Bonds Reworked</label>
+            </div>
+            <div id="ipxwpa" class="gjs-cell form-row">
+              <label id="itf5i"><input type="radio" name="moduleSTATUS" value="Bolted"/> Bolted</label>
+            </div>
+          </div>
+          <div id="ibmw1k" class="gjs-row">
+            <div id="im3fp" class="gjs-cell form-row">
+              <label id="i8peu-2"><input type="radio" name="moduleSTATUS" value="Backside Bonded"/> Backside Bonded</label>
+            </div>
+            <div id="itton" class="gjs-cell form-row">
+              <label id="i1t5o"><input type="radio" name="moduleSTATUS" value="Backside Encapsulated"/> Backside Encapsulated</label>
+            </div>
+            <div id="ik8pqx" class="gjs-cell form-row">
+              <label id="i9wl5-2"><input type="radio" name="moduleSTATUS" value="Completely Bonded" id="id36t-2"/> Completely Bonded</label>
+            </div>
+            <div id="ivnxle" class="gjs-cell form-row">
+              <label id="iu3h3-2"><input type="radio" name="moduleSTATUS" value="Completely Encapsulated"/> Completely Encapsulated</label>
+            </div>
+            <div id="inxoou" class="gjs-cell form-row">
+            </div>
+          </div>
+        </div>
+        <div id="ikqal8" class="cards">
+          <div id="i5oney" class="gjs-row">
+            <div id="iav7ih" class="gjs-cell form-row">
+              <button type="button" class="statusModuleID" id="LED1L"></button>
+              <label class="labelModuleID">1L</label>
+              <input type="text" placeholder="Module ID" name="moduleID1L" class="inputModuleID" id="moduleID1L"/>
+            </div>
+            <div id="ixp0rj" class="gjs-cell form-row">
+              <button type="button" class="statusModuleID" id="LED1C"></button>
+              <label class="labelModuleID">1C</label>
+              <input type="text" placeholder="Module ID" name="moduleID1C" class="inputModuleID" id="moduleID1C"/>
+            </div>
+            <div id="i7v6dg" class="gjs-cell form-row">
+              <button type="button" class="statusModuleID" id="LED1R"></button>
+              <label class="labelModuleID">1R</label>
+              <input type="text" placeholder="Module ID" name="moduleID1R" class="inputModuleID" id="moduleID1R"/>
+            </div>
+          </div>
+          <div id="i55fvd" class="gjs-row">
+            <div id="icpqsl" class="gjs-cell form-row">
+              <button type="button" class="statusModuleID" id="LED2L"></button>
+              <label class="labelModuleID">2L</label>
+              <input type="text" placeholder="Module ID" name="moduleID2L" class="inputModuleID" id="moduleID2L"/>
+            </div>
+            <div id="igwgq1" class="gjs-cell form-row">
+              <button type="button" class="statusModuleID" id="LED2C"></button>
+              <label id="ii6n0i" class="labelModuleID">2C</label>
+              <input type="text" placeholder="Module ID" name="moduleID2C" class="inputModuleID" id="moduleID2C"/>
+            </div>
+            <div id="i535on" class="gjs-cell form-row">
+              <button type="button" class="statusModuleID" id="LED2R"></button>
+              <label id="ic4bpb" class="labelModuleID">2R</label>
+              <input type="text" placeholder="Module ID" name="moduleID2R" class="inputModuleID" id="moduleID2R"/>
+            </div>
+          </div>
+        </div>
+      </form>
+      <!-- === New Dropdown Menu === -->
+      <div id="ii4kyn" class="gjs-row">
+        <div id="i5qemj" class="gjs-cell">
+          <div id="ip1mvm">Latest DAQ Result: 
+          </div>
+          <div id="daqNewOpt">
+            <br/>
+          </div>
+        </div>
+        <div id="iwfnx8" class="gjs-cell">
+          <button type="button" id="daqSummaryBtn"> Check </button>
+          <select type="text" id="daqSelect" name="daqResult">
+            <!-- Options will be populated dynamically -->
+            <option value="">-- Select an option --</option>
+            {% for daqres in DAQres %}
+            <option value="{{daqres}}"> {{daqres}} </option>
+            {% endfor %}
+          </select>
+          <div id="i388gj">DAQ Result:</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script>
+    async function updateStatus() {
+      const response = await fetch('/task1/status');
+      const data = await response.json();
+
+      const initBtn = document.getElementById('initBtn');
+      const confBtn = document.getElementById('confBtn');
+      const execBtn = document.getElementById('execBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const exitBtn = document.getElementById('exitBtn');
+
+      // accept command only if jobmode is empty or task1
+      if (data.jobmode !== "" ) {
+        if (data.jobmode !== "task1") {
+          if ( data.status !== "startup" && data.status !== "destroyed" ) {
+            initBtn.disabled = true ;
+            confBtn.disabled = true ;
+            execBtn.disabled = true ;
+            stopBtn.disabled = true ;
+            exitBtn.disabled = true ;
+            document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true ; });
+            document.getElementById('statusText').innerText = "server is running other task";
+            return; // disable all buttons and returned
+          } } }
+      document.getElementById('statusText').innerText = data.status;
+
+      if (data.status === 'startup' ) {
+        initBtn.disabled = false;
+        confBtn.disabled = true ;
+        execBtn.disabled = true ;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = true ;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+      if (data.status === 'initializing' ) {
+        initBtn.disabled = true ;
+        confBtn.disabled = true ;
+        execBtn.disabled = true ;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = false;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+      if (data.status === 'initialized' ) {
+        initBtn.disabled = true ;
+        confBtn.disabled = false;
+        execBtn.disabled = true ;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = false;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+      if (data.status === 'configured' ) {
+        initBtn.disabled = true ;
+        confBtn.disabled = false;
+        execBtn.disabled = false;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = false;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+      if (data.status === 'running' ) {
+        initBtn.disabled = true ;
+        confBtn.disabled = true ;
+        execBtn.disabled = true ;
+        stopBtn.disabled = false;
+        exitBtn.disabled = false;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true; });
+      }
+      if (data.status === 'idle' ) {
+        initBtn.disabled = true ;
+        confBtn.disabled = false;
+        execBtn.disabled = true ;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = false;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+      if (data.status === 'stopping' ) {
+        initBtn.disabled = true ;
+        confBtn.disabled = true ;
+        execBtn.disabled = true ;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = false;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+      if (data.status === 'stopped' ) {
+        initBtn.disabled = true ;
+        confBtn.disabled = false;
+        execBtn.disabled = true ;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = false;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+      if (data.status === 'destroying' ) {
+        initBtn.disabled = true ;
+        confBtn.disabled = true ;
+        execBtn.disabled = true ;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = true ;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+      if (data.status === 'destroyed' ) {
+        initBtn.disabled = false;
+        confBtn.disabled = true ;
+        execBtn.disabled = true ;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = true ;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+      if (data.status === 'error') {
+        initBtn.disabled = true ;
+        confBtn.disabled = true ;
+        execBtn.disabled = true ;
+        stopBtn.disabled = true ;
+        exitBtn.disabled = false;
+        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
+      }
+
+      // === Populate dropdown with DAQres dynamically ===
+      const daqSelect = document.getElementById('daqSelect');
+      if (daqSelect) {
+        // Skip if more than 100 options already
+        if (daqSelect.options.length < 100) {
+          if (Array.isArray(data.DAQres)) {
+            data.DAQres.forEach(value => {
+              // Check if option already exists
+              let exists = false;
+              for (let i = 0; i < daqSelect.options.length; i++) {
+                if (daqSelect.options[i].value === value) {
+                  exists = true;
+                  break;
+                }
+              }
+              // Append only if missing
+              if (!exists) {
+                const opt = document.createElement("option");
+                opt.value = value;
+                opt.textContent = value;
+                daqSelect.appendChild(opt);
+                document.getElementById('daqNewOpt').innerText = value;
+              }
+            } );
+          } // end of data.DAQres is array
+          //  // Ensure DAQres is a string before processing
+          //  if (typeof data.DAQres === "string" && data.DAQres.trim() !== "") {
+          //    const value = data.DAQres.trim();
+          //    // Check if option already exists
+          //    let exists = false;
+          //    for (let i = 0; i < daqSelect.options.length; i++) {
+          //      if (daqSelect.options[i].value === value) {
+          //        exists = true;
+          //        break;
+          //      }
+          //    }
+
+          //    // Append only if missing
+          //    if (!exists) {
+          //      const opt = document.createElement("option");
+          //      opt.value = value;
+          //      opt.textContent = value;
+          //      daqSelect.appendChild(opt);
+          //      document.getElementById('daqNewOpt').innerText = value;
+          //    }
+          //  } // end of data.DAQres is string and is not empty
+        } // end of daqSelect.options.length < 100
+      } // end of if daqSelect
+    }
+
+    async function execjob(varname) {
+      const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
+      await fetch('/task1/'+varname, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken  // <-- add this header
+        },
+        body: JSON.stringify({})
+      });
+      updateStatus();
+    }
+
+
+
+    async function initJob() {  execjob('init'); document.getElementById('daqSelect').options.length=1; document.getElementById('daqNewOpt').innerText=""; }
+    async function execJob() { execjob('run'); }
+    async function stopJob() { execjob('stop'); }
+    async function exitJob() { execjob('destroy'); }
+
+    setInterval(updateStatus, 1000);  // Poll every second
+    window.onload = updateStatus;
+  </script>
+
+  <script>
+    document.getElementById('confBtn').addEventListener('click', function() {
+      document.getElementById('pymodule_configurations').dispatchEvent(new Event('submit', { cancelable: true }));
+    });
+    document.getElementById('pymodule_configurations').addEventListener('submit', function(e) {
+      // 🔹 Trigger HTML5 validation
+      if (!this.checkValidity()) {
+        e.preventDefault();        // stop submission
+        this.reportValidity();     // show browser validation UI
+        return;
+      }
+
+      e.preventDefault();  // Prevent normal form submission
+
+      const formData = new FormData(this);
+      const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
+      const obj = {};
+      console.info(formData);
+      formData.forEach((value, key) => {
+        obj[key] = value;
+      });
+
+      fetch('/task1/submit', {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken  // <-- add this header
+        },
+        body: JSON.stringify(obj)
+      })
+        .then(response => {
+          if (!response.ok) return response.json().then(err => Promise.reject(err));
+          return response.json();
+        })
+        .then(data => {
+          if (data.status === 'success') {
+            alert(data.message);   // or update some div with the message
+            // Disable inputs
+            //document.querySelectorAll('#configForm input').forEach(input => input.disabled = true);
+            //document.querySelector('#configForm button[type="submit"]').disabled = true;
+          } else {
+            // Show validation errors if any
+            alert('Error: ' + JSON.stringify(data.errors));
+          }
+        })
+        .catch(error => {
+          alert('Submission failed: ' + JSON.stringify(error));
+        });
+    });
+  </script>
+  <script>
+    document.getElementById('daqSummaryBtn').addEventListener('click', function() {
+      const daqSelect = document.getElementById('daqSelect');
+      const selectedValue = daqSelect.value;
+
+      if (!selectedValue) {
+        alert("Please select a DAQ result first.");
+        return;
+      }
+
+      // Build the link and navigate
+      const url = `/daqsummary/gallery/${encodeURIComponent(selectedValue)}`;
+      window.open(url, "_blank");
+    });
+  </script>
+  <script>
+    // input restriction. All input field in class inputMOduleID from form #pymodule_configurations allowed only digit and capital character and dash character. Length<20
+    document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => {
+      input.addEventListener('input', function(e) {
+        this.value = this.value.toUpperCase().replace(/[^A-Z0-9\-]/g, '').slice(0, 20);
+      });
+    });
+    //   document.getElementById('moduleID1L').addEventListener('input', function(e) {
+    //   this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    // });
+  </script>
+</body>
+
+<style>* {
+box-sizing: border-box;
+}
+  body {
+    margin: 0;
+  }
+*{
+  box-sizing:border-box;
+}
+  .container-width{
+    width:90%;
+    max-width:1150px;
+    margin:0 auto;
+  }
+  .flex-sect{
+    padding:100px 0;
+    font-family:Helvetica, serif;
+  }
+  .flex-title{
+    margin-bottom:15px;
+    font-size:2em;
+    text-align:center;
+    font-weight:700;
+    padding:5px;
+  }
+  .cards{
+    padding:20px 0;
+    display:flex;
+    justify-content:space-around;
+    flex-flow:wrap;
+  }
+  #it8wd{
+    width:1000px;
+  }
+  .gjs-row{
+    display:flex;
+    justify-content:flex-start;
+    align-items:stretch;
+    flex-wrap:nowrap;
+    padding:10px;
+  }
+  .gjs-cell{
+    min-height:75px;
+    flex-grow:1;
+    flex-basis:100%;
+  }
+  #i1sqf{
+    flex-basis:70%;
+    height:40px;
+    min-height:40px;
+  }
+  #i5xn8{
+    flex-basis:30%;
+    height:40px;
+    min-height:40px;
+  }
+  #idewg{
+    height:60px;
+  }
+  .ctrlbtn{
+    width:18%;
+    height:30px;
+    margin:5px 5px 5px 5px;
+  }
+  #statusText{
+    padding:10px 10px 10px 10px;
+  }
+  #i8wfow{
+    justify-content:flex-start;
+    flex-direction:row;
+    align-self:auto;
+    text-align:left;
+    float:none;
+    height:20px;
+    text-decoration:none;
+    margin:5px 5px 5px 0px;
+  }
+  #inta7e{
+    flex-basis:70%;
+    min-height:auto;
+  }
+  #iql44{
+    max-width:100%;
+    width:100%;
+    padding:0px 20px 0px 20px;
+  }
+  .labelModuleID{
+    float:none;
+    margin:0 5px 0px 5px;
+    padding:5px 0px 0px 0px;
+  }
+  .form-row{
+    min-height:auto;
+    height:40px;
+    width:200px;
+    flex-basis:250px;
+  }
+  .statusModuleID{
+    width:10px;
+    height:10px;
+    padding:0px 0px 0px 0px;
+    min-height:0px;
+    border-radius:5px 5px 0px 0px;
+    margin:0 10px 0 0;
+  }
+  #ig3nn{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #ipxwp{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #ipxwpa{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #ie7gk{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #im3fp{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #itton{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  .inputModuleID{
+    margin:5px 5px 5px 10px;
+    width:150px;
+  }
+  #ivnxle{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #ibmw1k{
+    max-width:100%;
+    width:100%;
+    padding:0px 20px 0px 20px;
+  }
+  #ij10l{
+    padding:10px 0px 10px 0px;
+    align-self:center;
+    display:flex;
+    height:100%;
+  }
+  #radioContainer{
+    margin:15px 0;
+  }
+  #iav7ih{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #ixp0rj{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #i7v6dg{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #i5oney{
+    max-width:100%;
+    width:100%;
+    padding:10px 20px 10px 20px;
+  }
+  #icpqsl{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #igwgq1{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #i535on{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #i55fvd{
+    max-width:100%;
+    width:100%;
+    padding:10px 20px 10px 20px;
+  }
+  #i0vy1u{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #ik8pqx{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #i5qemj{
+    flex-basis:30%;
+    min-height:30px;
+  }
+  #iwfnx8{
+    flex-basis:70%;
+    min-height:30px;
+  }
+  #ii4kyn{
+    padding:10px 20px 10px 20px;
+  }
+  #i388gj{
+    justify-content:flex-start;
+    flex-direction:row;
+    align-self:auto;
+    text-align:left;
+    float:right;
+    height:20px;
+    text-decoration:none;
+    margin:5px 5px 5px 0px;
+  }
+  #daqSelect{
+    justify-content:flex-start;
+    float:right;
+    height:20px;
+    margin:5px 5px 5px 0;
+  }
+  #daqSummaryBtn{
+    justify-content:flex-start;
+    float:right;
+    height:20px;
+    margin:5px 5px 5px 0;
+  }
+  #ip1mvm{
+    justify-content:flex-start;
+    flex-direction:row;
+    align-self:auto;
+    text-align:left;
+    float:left;
+    height:20px;
+    text-decoration:none;
+    margin:5px 5px 5px 0px;
+  }
+  #itq9y3{
+    flex-basis:30%;
+    min-height:auto;
+  }
+  #iwgoh5{
+    justify-content:flex-start;
+    float:right;
+    height:20px;
+    margin:5px 5px 5px 0;
+  }
+  #i109v8{
+    justify-content:flex-start;
+    flex-direction:row;
+    align-self:auto;
+    text-align:left;
+    float:right;
+    height:20px;
+    text-decoration:none;
+    margin:5px 5px 5px 0px;
+  }
+  #daqNewOpt{
+    justify-content:flex-start;
+    flex-direction:row;
+    align-self:auto;
+    text-align:left;
+    float:left;
+    height:20px;
+    text-decoration:none;
+    margin:5px 5px 5px 0px;
+  }
+  #inxoou{
+    width:250px;
+    padding:5px 5px 5px 5px;
+    justify-content:center;
+    display:flex;
+  }
+  #iu3h3-2{
+    width:220px;
+  }
+  #i1t5o{
+    width:200px;
+  }
+  #i9wl5-2{
+    width:200px;
+  }
+  #i8peu-2{
+    width:200px;
+  }
+  #ikckl{
+    width:200px;
+  }
+  #i6hsb{
+    width:200px;
+  }
+  #iio4i{
+    width:200px;
+  }
+  #iy4ud{
+    width:200px;
+  }
+  @media (max-width: 768px){
+    .gjs-row{
+      flex-wrap:wrap;
+    }
+  }
+</style>

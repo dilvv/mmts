@@ -1,0 +1,6 @@
+#!/home/mmts/PLC_toolkits_mqtt_NTU/.venv/bin/python3.11
+import sys
+from snap7.server.__main__ import main
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(main())
