@@ -52,7 +52,7 @@ make -f makefile_task3 run
 
 点击 `AutoTest` 后会：
 
-1. 自动提交当前网页表单。
+1. 校验并保存当前网页表单。
 2. 保存你扫进去的 module ID。
 3. 生成 `MultiModuleTeststandUI/tmp_files/runtime/full_batch_web.yml`。
 4. 调用 `scripts/run_full_mmts_batch.py`。
@@ -61,12 +61,18 @@ make -f makefile_task3 run
 
 `full_batch_web.yml` 是落盘文件，杀掉并重启 `app.py` 后文件仍然存在；但是网页表单和 Flask 内存里的配置会被清空。下一次点击 `AutoTest` 会覆盖这个文件。
 
-也就是说，保存网页表单之后，`AutoTest` 等价于在 `MultiModuleTeststandUI` 目录下运行：
+也就是说，`AutoTest` 已经包含网页配置步骤。保存网页表单之后，它等价于在 `MultiModuleTeststandUI` 目录下运行：
 
 ```bash
 python scripts/run_full_mmts_batch.py \
   -c tmp_files/runtime/full_batch_web.yml \
   --status-file tmp_files/runtime/current_batch_status.json
+```
+
+正式 runner 在每一次 IV scan 前也会自动执行：
+
+```bash
+make -f makefile_task3 initialize
 ```
 
 ## Demo 和正式版区别

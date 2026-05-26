@@ -43,11 +43,10 @@ For IV scan / task3:
 
 1. Open the web UI.
 2. Select task3 / IV scan.
-3. Click `Initialize`.
-4. Scan or type module IDs into the module position fields.
-5. Select temperature and humidity.
-6. Click `Configure`.
-7. Click either `Run` or `AutoTest`.
+3. Scan or type module IDs into the module position fields.
+4. Select temperature and humidity.
+5. For manual IV, click `Initialize`, `Configure`, then `Run`.
+6. For full-batch automation, click `AutoTest`.
 
 Button behavior:
 
@@ -86,7 +85,7 @@ IV scan is intentionally single-threaded. Do not run it with `make -j`.
 
 When you click `AutoTest`, the UI does this:
 
-1. Submits the current web form.
+1. Validates and saves the current web form.
 2. Saves scanned module IDs into Flask memory.
 3. Generates:
 
@@ -104,7 +103,7 @@ python scripts/run_full_mmts_batch.py \
 
 5. Displays progress in the `Auto Batch Status` panel.
 
-In other words, after the form is saved, `AutoTest` is equivalent to running this command from `MultiModuleTeststandUI`:
+In other words, `AutoTest` includes the web configuration step. After the form is saved, it is equivalent to running this command from `MultiModuleTeststandUI`:
 
 ```bash
 python scripts/run_full_mmts_batch.py \
@@ -113,6 +112,12 @@ python scripts/run_full_mmts_batch.py \
 ```
 
 `tmp_files/runtime/full_batch_web.yml` stays on disk until it is overwritten or deleted. Restarting `app.py` does not delete it, but the web form state in memory is cleared after restart.
+
+The formal runner also runs IV initialization internally before each IV scan:
+
+```bash
+make -f makefile_task3 initialize
+```
 
 ## Demo Full-Batch Automation
 

@@ -51,10 +51,10 @@ make -f makefile_task3 run
 Web-triggered formal batch automation:
 
 ```text
-Initialize -> scan module IDs -> Configure -> AutoTest
+scan module IDs -> AutoTest
 ```
 
-`AutoTest` saves the current web form into:
+`AutoTest` validates and saves the current web form into:
 
 ```text
 MultiModuleTeststandUI/tmp_files/runtime/full_batch_web.yml
@@ -68,7 +68,7 @@ python scripts/run_full_mmts_batch.py \
   --status-file tmp_files/runtime/current_batch_status.json
 ```
 
-So `AutoTest` is equivalent to running the command above from inside `MultiModuleTeststandUI` after the web form has been saved.
+So `AutoTest` includes the web configuration step and is equivalent to running the command above from inside `MultiModuleTeststandUI` after the form has been saved. The formal runner also calls `make -f makefile_task3 initialize` before each IV scan.
 
 The task3 page reads `tmp_files/runtime/current_batch_status.json` and displays progress in the `Auto Batch Status` panel.
 

@@ -118,6 +118,33 @@ def build_autotest_config(confDICT:dict):
     return runtime_config
 
 
+def save_config_from_json(json_data:dict):
+    if not json_data:
+        return False, {'message': 'Missing JSON data'}
+
+    form = ConfigForm(data=json_data)
+    if not form.validate_on_submit():
+        errors = {}
+        for fieldName, errorMessages in form.errors.items():
+            errors[fieldName] = errorMessages
+        return False, errors
+
+    def ignore_special_characters(string):
+        return re.sub(r'[^A-Za-z0-9\-]+', '', string) if string else ''
+
+    for varname in CONF_DICT.keys():
+        value = getattr(form, varname).data if hasattr(form, varname) else ''
+        clean_val = ignore_special_characters(str(value))
+        if len(clean_val) > 20:
+            clean_val = ''
+        CONF_DICT[varname] = clean_val
+
+    is_empty_dict = sum(1 if v else 0 for _, v in CONF_DICT.items()) == 0
+    if is_empty_dict:
+        return False, 'Got empty configurations!'
+    return True, {}
+
+
 
 #logger = logging.getLogger('flask.app')
 logger = logging.getLogger('werkzeug')
@@ -444,8 +471,14 @@ def AutoTest():
     current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got an {CMD_ID} command')
     if not check_jobmode(): return '', 204
 
+    ok, errors = save_config_from_json(request.get_json())
+    if not ok:
+        current_app.logger.warning(f'[AutoTest] Validation errors: {errors}')
+        return jsonify({'status': 'error', 'errors': errors}), 400
+    current_app.logger.info(f'[AutoTest] Current CONF_DICT: {CONF_DICT}')
+
     job_stop_flags[CMD_ID].clear()
-    if isCommandRunable(shared_state.server_status, 'Run'):
+    if shared_state.server_status in ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']:
         populated_modules = {k: v for k, v in module_ids_from_conf(CONF_DICT).items() if v}
         if not populated_modules:
             return jsonify({'status': 'error', 'errors': 'No module IDs configured for AutoTest.'}), 400

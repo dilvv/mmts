@@ -250,7 +250,7 @@
         initBtn.disabled = false;
         confBtn.disabled = true ;
         execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
+        autoTestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -268,7 +268,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = false;
         execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
+        autoTestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -295,7 +295,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = false;
         execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
+        autoTestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -313,7 +313,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = false;
         execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
+        autoTestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -331,7 +331,7 @@
         initBtn.disabled = false;
         confBtn.disabled = true ;
         execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
+        autoTestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -414,8 +414,30 @@
     async function initJob() {  execjob('init'); document.getElementById('daqSelect').options.length=1; document.getElementById('daqNewOpt').innerText=""; }
     async function execJob() { execjob('run'); }
     async function autoTestJob() {
-      const configured = await configureTask3(false);
-      if (configured) execjob('autotest');
+      const form = document.getElementById('pymodule_configurations');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      const formData = new FormData(form);
+      const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
+      const obj = {};
+      formData.forEach((value, key) => {
+        obj[key] = value;
+      });
+      const response = await fetch('/task3/autotest', {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(obj)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        alert('AutoTest failed: ' + JSON.stringify(error));
+      }
+      updateStatus();
     }
     async function stopJob() { execjob('stop'); }
     async function exitJob() { execjob('destroy'); }
