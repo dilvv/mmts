@@ -1,6 +1,6 @@
 demo_controls:
-  dewpoint_threshold_C: -30
-  dry_run: true
+  dewpoint_threshold_C: -10
+  dry_run: false
   force_run: false
 
 precheck:
@@ -9,13 +9,13 @@ precheck:
 cycle_configs:
   first_cycle:
     temp_high: 20
-    temp_low: -20
+    temp_low: 15
     cycles: 1
     idle_warm_min: 2
     idle_cold_min: 3
   remaining_cycles:
     temp_high: 20
-    temp_low: -20
+    temp_low: 15
     cycles: 5
     idle_warm_min: 2
     idle_cold_min: 2
@@ -41,7 +41,7 @@ module_ids:
   2L: ""
   2C: ""
   2R: ""
-  3L: ""
+  3L: "320MLF3WCIH0293"
   3C: ""
   3R: ""
   4L: ""
