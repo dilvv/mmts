@@ -52,7 +52,7 @@ For IV scan / task3:
 Button behavior:
 
 - `Run`: runs one manual IV scan through `makefile_task3`.
-- `AutoTest`: starts the demo full-batch automation using the current web form module IDs.
+- `AutoTest`: starts the formal full-batch automation using the current web form module IDs.
 - `Stop`: stops the current running task where supported.
 - `Destroy`: resets the task state and hardware state.
 
@@ -82,7 +82,7 @@ IV scan is intentionally single-threaded. Do not run it with `make -j`.
 
 ## AutoTest From The Web UI
 
-`AutoTest` is the recommended web-triggered full workflow during the current demo validation phase.
+`AutoTest` is the web-triggered formal full-batch workflow.
 
 When you click `AutoTest`, the UI does this:
 
@@ -97,12 +97,20 @@ tmp_files/runtime/full_batch_web.yml
 4. Starts:
 
 ```bash
-python scripts/run_full_mmts_batch_demo.py \
+python scripts/run_full_mmts_batch.py \
   -c tmp_files/runtime/full_batch_web.yml \
   --status-file tmp_files/runtime/current_batch_status.json
 ```
 
 5. Displays progress in the `Auto Batch Status` panel.
+
+In other words, after the form is saved, `AutoTest` is equivalent to running this command from `MultiModuleTeststandUI`:
+
+```bash
+python scripts/run_full_mmts_batch.py \
+  -c tmp_files/runtime/full_batch_web.yml \
+  --status-file tmp_files/runtime/current_batch_status.json
+```
 
 `tmp_files/runtime/full_batch_web.yml` stays on disk until it is overwritten or deleted. Restarting `app.py` does not delete it, but the web form state in memory is cleared after restart.
 
@@ -160,8 +168,9 @@ data/full_batch_config.example.yml
 
 Current practical note:
 
-- The demo runner is the better tested path for web-triggered automation right now.
-- The formal runner is intended for production settings, but its config shape should be reviewed before use because the web workflow currently passes module IDs in the demo-style top-level `module_ids` block.
+- `AutoTest` uses the formal runner.
+- The generated `tmp_files/runtime/full_batch_web.yml` is based on `data/full_batch_config.example.yml`.
+- The web form replaces the top-level `module_ids` block before starting the formal runner.
 
 ## Batch Status Display
 

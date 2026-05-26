@@ -104,7 +104,7 @@ def module_ids_from_conf(confDICT:dict):
 
 
 def build_autotest_config(confDICT:dict):
-    config_template = 'data/full_batch_demo.example.yml'
+    config_template = 'data/full_batch_config.example.yml'
     runtime_dir = os.path.join('tmp_files', 'runtime')
     os.makedirs(runtime_dir, exist_ok=True)
     runtime_config = os.path.join(runtime_dir, 'full_batch_web.yml')
@@ -439,7 +439,7 @@ def Run():
 
 @app.route('/autotest', methods=['POST'])
 def AutoTest():
-    ''' run full demo batch automation from the current web configuration '''
+    ''' run formal full-batch automation from the current web configuration '''
     CMD_ID = 'AutoTest'
     current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got an {CMD_ID} command')
     if not check_jobmode(): return '', 204
@@ -458,7 +458,7 @@ def AutoTest():
                 config_path = build_autotest_config(CONF_DICT)
                 status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
                 command = (
-                    f'{sys.executable} scripts/run_full_mmts_batch_demo.py '
+                    f'{sys.executable} scripts/run_full_mmts_batch.py '
                     f'-c {config_path} --status-file {status_path}'
                 )
                 run_command(command, CMD_ID)

@@ -48,7 +48,7 @@ Initialize -> scan module IDs -> Configure -> Run
 make -f makefile_task3 run
 ```
 
-Web-triggered demo batch automation:
+Web-triggered formal batch automation:
 
 ```text
 Initialize -> scan module IDs -> Configure -> AutoTest
@@ -63,10 +63,12 @@ MultiModuleTeststandUI/tmp_files/runtime/full_batch_web.yml
 Then it starts:
 
 ```bash
-python scripts/run_full_mmts_batch_demo.py \
+python scripts/run_full_mmts_batch.py \
   -c tmp_files/runtime/full_batch_web.yml \
   --status-file tmp_files/runtime/current_batch_status.json
 ```
+
+So `AutoTest` is equivalent to running the command above from inside `MultiModuleTeststandUI` after the web form has been saved.
 
 The task3 page reads `tmp_files/runtime/current_batch_status.json` and displays progress in the `Auto Batch Status` panel.
 
@@ -82,7 +84,7 @@ Formal runner:
 - `MultiModuleTeststandUI/scripts/run_full_mmts_batch.py`
 - `MultiModuleTeststandUI/data/full_batch_config.example.yml`
 
-The demo runner is currently the recommended web-triggered automation path because it matches the module-ID structure collected from the web page.
+`AutoTest` uses the formal runner. The web page generates `tmp_files/runtime/full_batch_web.yml` from `data/full_batch_config.example.yml` and replaces the `module_ids` block with the IDs scanned in the browser.
 
 ## Batch Sequence
 

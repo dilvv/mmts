@@ -48,18 +48,26 @@ make -f makefile_task3 run
 
 ## 网页上的 AutoTest
 
-`AutoTest` 按钮用于从网页启动当前 demo full-batch 流程。
+`AutoTest` 按钮用于从网页启动正式 full-batch 流程。
 
 点击 `AutoTest` 后会：
 
 1. 自动提交当前网页表单。
 2. 保存你扫进去的 module ID。
 3. 生成 `MultiModuleTeststandUI/tmp_files/runtime/full_batch_web.yml`。
-4. 调用 `scripts/run_full_mmts_batch_demo.py`。
+4. 调用 `scripts/run_full_mmts_batch.py`。
 5. 把状态写入 `tmp_files/runtime/current_batch_status.json`。
 6. 网页 `Auto Batch Status` 面板显示当前 batch 状态。
 
 `full_batch_web.yml` 是落盘文件，杀掉并重启 `app.py` 后文件仍然存在；但是网页表单和 Flask 内存里的配置会被清空。下一次点击 `AutoTest` 会覆盖这个文件。
+
+也就是说，保存网页表单之后，`AutoTest` 等价于在 `MultiModuleTeststandUI` 目录下运行：
+
+```bash
+python scripts/run_full_mmts_batch.py \
+  -c tmp_files/runtime/full_batch_web.yml \
+  --status-file tmp_files/runtime/current_batch_status.json
+```
 
 ## Demo 和正式版区别
 
@@ -73,7 +81,7 @@ Demo 版：
 
 - 脚本：`MultiModuleTeststandUI/scripts/run_full_mmts_batch.py`
 - 配置：`MultiModuleTeststandUI/data/full_batch_config.example.yml`
-- 特点：目标是生产用完整流程，但当前网页 AutoTest 走的是 demo runner，因为 demo runner 更符合现在网页扫 ID 的配置结构。
+- 特点：目标是生产用完整流程；当前网页 `AutoTest` 已经走正式 runner，并用网页扫到的 module ID 覆盖正式配置里的 `module_ids`。
 
 ## Batch 流程概要
 

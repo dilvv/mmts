@@ -99,9 +99,9 @@ def run_command(command, cwd, status_file, stage, summary, env=None):
         raise RuntimeError(f"Command failed with exit code {process.returncode}: {' '.join(command)}")
 
 
-def build_iv_command(scan_cfg):
+def build_iv_command(scan_cfg, module_ids):
     command = ["make", "-f", "makefile_task3", "run"]
-    for position, module_id in scan_cfg["module_ids"].items():
+    for position, module_id in module_ids.items():
         if module_id:
             command.append(f"moduleID{position}={module_id}")
     command.append(f"currentTEMPERATURE={scan_cfg['temperature']}")
@@ -110,7 +110,7 @@ def build_iv_command(scan_cfg):
     return command
 
 
-def run_iv_scan(scan_name, scan_cfg, status_file):
+def run_iv_scan(scan_name, scan_cfg, module_ids, status_file):
     run_command(
         ["make", "-f", "makefile_task3", "initialize"],
         cwd=UI_ROOT,
@@ -119,7 +119,7 @@ def run_iv_scan(scan_name, scan_cfg, status_file):
         summary=f"Initializing IV hardware for {scan_name}.",
     )
     run_command(
-        build_iv_command(scan_cfg),
+        build_iv_command(scan_cfg, module_ids),
         cwd=UI_ROOT,
         status_file=status_file,
         stage=scan_name,
@@ -253,7 +253,7 @@ def main():
                 poll_seconds=args.poll_seconds,
             )
 
-        run_iv_scan("iv1", iv_scans["iv1"], args.status_file)
+        run_iv_scan("iv1", iv_scans["iv1"], cfg["module_ids"], args.status_file)
         run_cycle("cycle1_start", cycle_cfg.get("first_cycle", "HMI_Control.yml"), args.status_file)
         wait_for_status_code(
             name="cycle1_started",
@@ -275,7 +275,7 @@ def main():
             poll_seconds=args.poll_seconds,
         )
 
-        run_iv_scan("iv2", iv_scans["iv2"], args.status_file)
+        run_iv_scan("iv2", iv_scans["iv2"], cfg["module_ids"], args.status_file)
         wait_for_status_code(
             name="cycle1_complete",
             client=client,
@@ -306,7 +306,7 @@ def main():
             poll_seconds=args.poll_seconds,
         )
 
-        run_iv_scan("iv3", iv_scans["iv3"], args.status_file)
+        run_iv_scan("iv3", iv_scans["iv3"], cfg["module_ids"], args.status_file)
         update_status({
             "status": "completed",
             "phase": "done",
