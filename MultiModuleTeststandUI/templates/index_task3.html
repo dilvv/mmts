@@ -12,12 +12,16 @@
       </div>
       <div id="idewg" class="gjs-row">
         <div id="i1sqf" class="gjs-cell">
+          <div class="autotest-row">
+            <button type="button" id="autoTestBtn" disabled class="ctrlbtn auto-test-btn" onclick="autoTestJob()">AutoTest</button>
+          </div>
+          <div class="manual-action-row">
           <button type="button" id="initBtn"          class="ctrlbtn" onclick="initJob()">Initialize</button>
           <button type="button" id="confBtn" disabled class="ctrlbtn"                    >Configure</button>
           <button type="button" id="execBtn" disabled class="ctrlbtn" onclick="execJob()">Run</button>
-          <button type="button" id="autoTestBtn" disabled class="ctrlbtn" onclick="autoTestJob()">AutoTest</button>
           <button type="button" id="stopBtn" disabled class="ctrlbtn" onclick="stopJob()">Stop</button>
           <button type="button" id="exitBtn" disabled class="ctrlbtn" onclick="exitJob()">Destroy</button>
+          </div>
         </div>
         <div id="i5xn8" class="gjs-cell">
           <div id="statusText">This is my status area
@@ -568,11 +572,7 @@ box-sizing: border-box;
   }
   #i1sqf{
     flex-basis:70%;
-    height:40px;
-    min-height:40px;
-    display:flex;
-    gap:8px;
-    align-items:center;
+    min-height:76px;
   }
   #i5xn8{
     flex-basis:30%;
@@ -580,13 +580,26 @@ box-sizing: border-box;
     min-height:40px;
   }
   #idewg{
-    height:60px;
+    min-height:92px;
+  }
+  .autotest-row,
+  .manual-action-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .autotest-row{
+    margin-bottom:6px;
   }
   .ctrlbtn{
     flex:1 1 0;
     min-width:0;
     height:30px;
     margin:5px 0;
+  }
+  .auto-test-btn{
+    max-width:220px;
+    font-weight:700;
   }
   .batch-status-panel{
     margin:10px 0 20px 0;
