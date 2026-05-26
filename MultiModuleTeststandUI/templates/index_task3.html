@@ -419,10 +419,6 @@
     async function execJob() { execjob('run'); }
     async function autoTestJob() {
       const form = document.getElementById('pymodule_configurations');
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-      }
       const formData = new FormData(form);
       const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
       const obj = {};

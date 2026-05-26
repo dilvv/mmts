@@ -118,16 +118,29 @@ def build_autotest_config(confDICT:dict):
     return runtime_config
 
 
-def save_config_from_json(json_data:dict):
+def save_config_from_json(json_data:dict, require_run_fields=True):
     if not json_data:
         return False, {'message': 'Missing JSON data'}
 
     form = ConfigForm(data=json_data)
-    if not form.validate_on_submit():
+    if require_run_fields and not form.validate_on_submit():
         errors = {}
         for fieldName, errorMessages in form.errors.items():
             errors[fieldName] = errorMessages
         return False, errors
+    if not require_run_fields:
+        for field in [
+            form.moduleID1L, form.moduleID1C, form.moduleID1R,
+            form.moduleID2L, form.moduleID2C, form.moduleID2R,
+            form.moduleID3L, form.moduleID3C, form.moduleID3R,
+            form.moduleID4L, form.moduleID4C, form.moduleID4R,
+            form.moduleID5L, form.moduleID5C, form.moduleID5R,
+            form.moduleID6L, form.moduleID6C, form.moduleID6R,
+            form.moduleID7L, form.moduleID7C, form.moduleID7R,
+            form.moduleID8L, form.moduleID8C, form.moduleID8R,
+        ]:
+            if not field.validate(form):
+                return False, {field.name: field.errors}
 
     def ignore_special_characters(string):
         return re.sub(r'[^A-Za-z0-9\-]+', '', string) if string else ''
@@ -471,7 +484,7 @@ def AutoTest():
     current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got an {CMD_ID} command')
     if not check_jobmode(): return '', 204
 
-    ok, errors = save_config_from_json(request.get_json())
+    ok, errors = save_config_from_json(request.get_json(), require_run_fields=False)
     if not ok:
         current_app.logger.warning(f'[AutoTest] Validation errors: {errors}')
         return jsonify({'status': 'error', 'errors': errors}), 400

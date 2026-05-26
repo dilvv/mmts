@@ -48,6 +48,8 @@ Initialize -> scan module IDs -> Configure -> Run
 make -f makefile_task3 run
 ```
 
+Manual `Run` uses the temperature and humidity selected on the web page.
+
 Web-triggered formal batch automation:
 
 ```text
@@ -69,6 +71,8 @@ python scripts/run_full_mmts_batch.py \
 ```
 
 So `AutoTest` includes the web configuration step and is equivalent to running the command above from inside `MultiModuleTeststandUI` after the form has been saved. The formal runner also calls `make -f makefile_task3 initialize` before each IV scan.
+
+`AutoTest` does not use the web page temperature or humidity controls. It uses the formal batch IV settings from `data/full_batch_config.example.yml`.
 
 The task3 page reads `tmp_files/runtime/current_batch_status.json` and displays progress in the `Auto Batch Status` panel.
 

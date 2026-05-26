@@ -79,6 +79,8 @@ make -f makefile_task3 stop
 
 IV scan is intentionally single-threaded. Do not run it with `make -j`.
 
+Manual `Run` uses the temperature and humidity selected on the web page.
+
 ## AutoTest From The Web UI
 
 `AutoTest` is the web-triggered formal full-batch workflow.
@@ -118,6 +120,8 @@ The formal runner also runs IV initialization internally before each IV scan:
 ```bash
 make -f makefile_task3 initialize
 ```
+
+`AutoTest` does not use the web page temperature or humidity controls. It uses the formal batch IV settings from `data/full_batch_config.example.yml`.
 
 ## Demo Full-Batch Automation
 

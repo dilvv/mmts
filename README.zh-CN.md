@@ -46,6 +46,8 @@ Initialize -> 扫 module ID -> Configure -> Run
 make -f makefile_task3 run
 ```
 
+手动 `Run` 会使用网页上选择的温度和湿度。
+
 ## 网页上的 AutoTest
 
 `AutoTest` 按钮用于从网页启动正式 full-batch 流程。
@@ -74,6 +76,8 @@ python scripts/run_full_mmts_batch.py \
 ```bash
 make -f makefile_task3 initialize
 ```
+
+`AutoTest` 不使用网页上的温度和湿度控件。它使用 `data/full_batch_config.example.yml` 里的正式 batch IV 设置。
 
 ## Demo 和正式版区别
 
