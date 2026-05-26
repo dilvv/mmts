@@ -2,153 +2,134 @@
 
 [中文说明](./README.zh-CN.md)
 
-This repository contains two main parts:
+This repository contains the MMTS control and monitoring software.
+
+There are two main directories:
 
 - `PLC_toolkits_mqtt_NTU`
-  The PLC, chiller, telemetry, MQTT, and database side.
+  PLC, chiller, HMI control, environment monitoring, MQTT, and database tools.
 - `MultiModuleTeststandUI`
-  The Flask web UI, IV scan controls, DAQ summary pages, and batch automation scripts.
+  Flask web UI, manual IV scan controls, DAQ summary pages, and batch automation scripts.
 
-## What Is In This Repo
+For most day-to-day MMTS operations, work from:
 
-Current workflow pieces:
+```bash
+cd MultiModuleTeststandUI
+```
 
-- manual IV scan from the web UI
-- PLC-driven thermal-cycle control
-- environment monitoring through `plc_to_db.py`
-- demo full-batch automation for workflow validation
-- formal full-batch automation for the full 3-IV + 6-cycle sequence
+Many scripts use relative paths such as `data/`, `scripts/`, `makefile_task3`, and `tmp_files/runtime/`.
 
-Important entry points:
+## Quick Start
 
-- `PLC_toolkits_mqtt_NTU/plc_to_db.py`
-- `PLC_toolkits_mqtt_NTU/control_hmi.py`
-- `MultiModuleTeststandUI/app.py`
-- `MultiModuleTeststandUI/flask_apps/app_task3.py`
-- `MultiModuleTeststandUI/scripts/run_full_mmts_batch.py`
-- `MultiModuleTeststandUI/scripts/run_full_mmts_batch_demo.py`
+```bash
+cd MultiModuleTeststandUI
+source .venv/bin/activate
+source ./init_bash_vars.sh
+python3 app.py
+```
 
-## Manual Flow
+Open:
 
-The original manual flow is still available.
+```text
+http://127.0.0.1:5001
+```
 
-1. Keep `PLC_toolkits_mqtt_NTU/plc_to_db.py` running.
-2. Start `MultiModuleTeststandUI/app.py`.
-3. Open the IV page and use `Initialize -> Configure -> Run`.
-4. Start the first cycle manually with `control_hmi.py`.
-5. Start the remaining 5 cycles manually with `control_hmi.py -c HMI_Control_5cycle.yml`.
-6. Watch PLC status, dewpoint, and IV curves from the UI / Grafana.
+## Main Web Workflows
 
-The manual IV path still goes through:
+Manual IV scan from the task3 page:
 
-- `MultiModuleTeststandUI/flask_apps/app_task3.py`
-- `MultiModuleTeststandUI/makefile_task3`
-- `MultiModuleTeststandUI/scripts/IVscan.initialize.sh`
-- `MultiModuleTeststandUI/scripts/IVscan.run.sh`
+```text
+Initialize -> scan module IDs -> Configure -> Run
+```
 
-## Demo Automation
+`Run` starts one IV scan through:
 
-The demo runner is separate from the formal runner. It is intended to validate that the automation sequence can run through with adjustable parameters before using the full production settings.
+```bash
+make -f makefile_task3 run
+```
 
-Files:
+Web-triggered demo batch automation:
+
+```text
+Initialize -> scan module IDs -> Configure -> AutoTest
+```
+
+`AutoTest` saves the current web form into:
+
+```text
+MultiModuleTeststandUI/tmp_files/runtime/full_batch_web.yml
+```
+
+Then it starts:
+
+```bash
+python scripts/run_full_mmts_batch_demo.py \
+  -c tmp_files/runtime/full_batch_web.yml \
+  --status-file tmp_files/runtime/current_batch_status.json
+```
+
+The task3 page reads `tmp_files/runtime/current_batch_status.json` and displays progress in the `Auto Batch Status` panel.
+
+## Automation Scripts
+
+Demo runner:
 
 - `MultiModuleTeststandUI/scripts/run_full_mmts_batch_demo.py`
 - `MultiModuleTeststandUI/data/full_batch_demo.example.yml`
-- `MultiModuleTeststandUI/docs/demo_batch.md`
 
-The demo runner keeps the same dewpoint acquisition method:
-
-- read PLC offset `314` for `DMT-01`
-- read PLC offset `356` for `DMT-02`
-- convert with `1.25 * raw - 5`
-
-The demo dewpoint gate uses the original simplified rule:
-
-- compare `min(DMT-01, DMT-02)` against the configured threshold
-
-Demo settings you can change:
-
-- `demo_controls.dewpoint_threshold_C`
-- `cycle_configs.first_cycle.temp_low`
-- `cycle_configs.remaining_cycles.temp_low`
-- `cycle_configs.remaining_cycles.idle_warm_min`
-- `cycle_configs.remaining_cycles.idle_cold_min`
-- `demo_controls.dry_run`
-- `demo_controls.force_run`
-
-Recommended first test:
-
-```bash
-python MultiModuleTeststandUI/scripts/run_full_mmts_batch_demo.py -c MultiModuleTeststandUI/data/full_batch_demo.example.yml
-```
-
-Suggested demo approach:
-
-1. Fill one or more `module_ids`.
-2. Keep `dry_run: true`.
-3. Reduce low temperature and hold times.
-4. Confirm the phase transitions and batch status updates.
-5. Only then switch to real PLC execution.
-
-## Formal Full-Batch Automation
-
-The formal runner is:
+Formal runner:
 
 - `MultiModuleTeststandUI/scripts/run_full_mmts_batch.py`
 - `MultiModuleTeststandUI/data/full_batch_config.example.yml`
 
-It is intended to execute:
+The demo runner is currently the recommended web-triggered automation path because it matches the module-ID structure collected from the web page.
 
-1. IV1 at room temperature / humidity 50
-2. First thermal cycle
-3. IV2 during the first low-temperature countdown stage
-4. Remaining 5 cycles
-5. IV3 after the last cycle
+## Batch Sequence
 
-The runner writes shared progress information to:
+The intended full-batch sequence is:
 
-- `MultiModuleTeststandUI/tmp_files/runtime/current_batch_status.json`
-
-The task3 page reads that file and shows a read-only `Auto Batch Status` panel, so the UI can stay open for human monitoring while the automation runs in the background.
-
-Recommended formal procedure:
-
-1. Confirm `plc_to_db.py` is running.
-2. Confirm the task3 page is reachable.
-3. Fill real module IDs into `full_batch_config.example.yml` or a copied config.
-4. Verify dewpoint rule, cycle configuration, and timeouts.
-5. Start the batch runner from the shell.
-6. Keep the UI open for monitoring and manual intervention if needed.
-
-Example:
-
-```bash
-python MultiModuleTeststandUI/scripts/run_full_mmts_batch.py -c MultiModuleTeststandUI/data/full_batch_config.example.yml
+```text
+precheck
+-> wait for dewpoint
+-> IV1
+-> first thermal cycle
+-> wait for cooling down
+-> wait for cooling countdown
+-> IV2
+-> wait for standby
+-> remaining 5 thermal cycles
+-> wait for standby
+-> IV3
 ```
 
-## Windows Local Task3 Startup
+PLC status codes are computed in `PLC_toolkits_mqtt_NTU/plc_io.py`:
 
-If you want to run only `app_task3.py` locally on Windows for page testing, use the project virtual environment and set the required environment variables first:
-
-```powershell
-cd C:\Users\12784\Documents\mmts\repo\MultiModuleTeststandUI
-$env:AndrewModuleTestingGUI_BASE='C:\Users\12784\Documents\mmts\repo\MultiModuleTeststandUI\external_packages\hgcal-module-testing-gui'
-$env:PYTHONPATH='C:\Users\12784\Documents\mmts\repo\MultiModuleTeststandUI'
-.\.venv\Scripts\python.exe .\flask_apps\app_task3.py
+```text
+0 = door open
+1 = standby
+2 = countdown warming
+3 = warming up
+4 = countdown cooling
+5 = cooling down
 ```
 
-Then open:
+## Important Entry Points
 
-- `http://127.0.0.1:5005/`
+- `MultiModuleTeststandUI/app.py`: main Flask web app.
+- `MultiModuleTeststandUI/flask_apps/app_task3.py`: task3 backend, manual IV, and AutoTest route.
+- `MultiModuleTeststandUI/templates/index_task3.html`: task3 page UI.
+- `MultiModuleTeststandUI/makefile_task3`: manual IV scan make targets.
+- `MultiModuleTeststandUI/scripts/run_full_mmts_batch_demo.py`: demo batch automation.
+- `PLC_toolkits_mqtt_NTU/control_hmi.py`: HMI thermal-cycle control.
+- `PLC_toolkits_mqtt_NTU/plc_io.py`: PLC read/write helpers and status-code logic.
 
-Notes:
+## Dependency Notes
 
-- `app.py` is the full MMTS web UI and normally uses port `5001`.
-- `flask_apps/app_task3.py` is the standalone task3 page for local testing and uses port `5005`.
+- `pymeasure` is pinned to `0.14.0` because newer PyMeasure releases changed the Keithley 2400 implementation.
+- Python code imports `snap7`; the pip package name is `python-snap7`, currently constrained as `python-snap7<3`.
 
-## Notes
+For the detailed UI operation guide, see:
 
-- The new automation scripts were added alongside the original manual workflow.
-- The demo runner and the formal runner are intentionally separate.
-- The UI-specific README remains under `MultiModuleTeststandUI/README.md`.
-- A Chinese project-level README is available at `README.zh-CN.md`.
+```text
+MultiModuleTeststandUI/README.md
+```
