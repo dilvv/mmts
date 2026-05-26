@@ -24,12 +24,11 @@
           </div>
         </div>
         <div id="i5xn8" class="gjs-cell">
-          <div id="statusText">This is my status area
-          </div>
         </div>
       </div>
       <div id="batchStatusPanel" class="batch-status-panel">
         <div class="batch-status-title">Auto Batch Status</div>
+        <div id="statusText" class="server-status-line">server: startup</div>
         <div id="batchStatusText">No auto batch status file yet.</div>
       </div>
       <form method="POST" id="pymodule_configurations" action="/task3/submit">
@@ -237,7 +236,7 @@
             document.getElementById('statusText').innerText = "server is running other task";
             return; // disable all buttons and returned
           } } }
-      document.getElementById('statusText').innerText = data.status;
+      document.getElementById('statusText').innerText = `server: ${data.status}`;
       const batchStatus = data.batchStatus || {};
       const batchLines = [];
       if (batchStatus.status) batchLines.push(`batch: ${batchStatus.status}`);
@@ -572,8 +571,7 @@ box-sizing: border-box;
   }
   #i5xn8{
     flex-basis:30%;
-    height:40px;
-    min-height:40px;
+    min-height:0;
   }
   #idewg{
     min-height:92px;
@@ -618,7 +616,13 @@ box-sizing: border-box;
     color:#e7ecff;
   }
   #statusText{
-    padding:10px 10px 10px 10px;
+    padding:0;
+  }
+  .server-status-line{
+    margin-bottom:8px;
+    color:#9fb0ff;
+    font-family:Consolas, monospace;
+    font-size:.9rem;
   }
   #i8wfow{
     justify-content:flex-start;
