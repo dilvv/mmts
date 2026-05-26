@@ -14,6 +14,7 @@ import re
 import os
 import sys
 import yaml
+import signal
 ### HTTP status codes https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
 
 JOBMODE = 'task3' # IV scan
@@ -199,6 +200,53 @@ job_thread = {
         'Stop': None,
         'Destroy': None,
         }
+job_process = {
+        'Init': None,
+        'Run': None,
+        'AutoTest': None,
+        'Stop': None,
+        'Destroy': None,
+        }
+
+
+def terminate_process(process, jobID):
+    if not process or process.poll() is not None:
+        return
+    try:
+        logger.info(f'[{jobID}][Terminate] terminating process group pid={process.pid}')
+        if os.name == 'posix':
+            os.killpg(process.pid, signal.SIGTERM)
+        else:
+            process.terminate()
+        process.wait(timeout=5)
+    except Exception as e:
+        logger.warning(f'[{jobID}][Terminate] graceful termination failed: {e}')
+        try:
+            if os.name == 'posix':
+                os.killpg(process.pid, signal.SIGKILL)
+            else:
+                process.kill()
+            process.wait(timeout=5)
+        except Exception as kill_error:
+            logger.error(f'[{jobID}][Terminate] force kill failed: {kill_error}')
+
+
+def stop_running_jobs(jobIDs):
+    for jobID in jobIDs:
+        if jobID in job_stop_flags:
+            job_stop_flags[jobID].set()
+        terminate_process(job_process.get(jobID), jobID)
+
+
+def join_job_threads(jobIDs, timeout=10):
+    for jobID in jobIDs:
+        t = job_thread.get(jobID)
+        if t and t.is_alive():
+            t.join(timeout=timeout)
+            if t.is_alive():
+                logger.warning(f'[{jobID}][JoinTimeout] thread still alive after {timeout}s')
+
+
 def set_thread(runTYPE, tHREAD:threading.Thread):
     if runTYPE not in job_thread:
         logger.warning(f'[InvalidRunType] set_thread() got run type "{runTYPE}" but only "{ job_thread.keys() }" allowed')
@@ -256,8 +304,10 @@ def run_command(cmd: str, jobID):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        bufsize=1
+        bufsize=1,
+        start_new_session=True,
     )
+    job_process[jobID] = process
 
     try:
         for line in process.stdout:
@@ -265,7 +315,7 @@ def run_command(cmd: str, jobID):
 
             if job_stop_flags[jobID].is_set():
                 logger.info(f"[{jobID}][Stop - Terminate]run_command() Stop signal received. Terminating command.")
-                process.terminate()
+                terminate_process(process, jobID)
                 logger.info(f"[{jobID}][Stop - Terminate]run_command() process terminate sent.")
                 break
         if not job_stop_flags[jobID].is_set():
@@ -273,13 +323,14 @@ def run_command(cmd: str, jobID):
     except Exception as e:
         logger.error(f'[{jobID}][Error - StatusChangeError]run_command() Error while running command: "{cmd}"')
 
-        process.terminate()
+        terminate_process(process, jobID)
         if server_status_is('stopping'):
             logger.info(f'[{jobID}][Error - StatusChangeError]run_command() error generated sinces "Stop" button clicked')
         else:
             logger.error(f'[{jobID}][Error - ErrorMessage     ] run_command() "{e}"')
     finally:
         process.wait()
+        job_process[jobID] = None
         if process.returncode == 0:
             set_server_status('idle')
             logger.info(f'[{jobID}][finally] run_command() sets system to idle')
@@ -528,15 +579,13 @@ def Stop():
     CMD_ID = 'Stop'
 
     set_server_status('stopping')
-    job_stop_flags['Run'].set()
-    job_stop_flags['AutoTest'].set()
+    stop_running_jobs(['Run', 'AutoTest'])
     current_app.logger.debug(f'[ServerAction][Stop] set job_stop_flags as True')
 
-    os.system('pkill make 2>/dev/null') ## force kill all jobs from make commands
-    if job_thread['Run'] and job_thread['Run'].is_alive():
-        job_thread['Run'].join()
-    if job_thread['AutoTest'] and job_thread['AutoTest'].is_alive():
-        job_thread['AutoTest'].join()
+    os.system('pkill -f "make -f makefile_task3" 2>/dev/null')
+    os.system('pkill -f "scripts/run_full_mmts_batch.py" 2>/dev/null')
+    os.system('pkill -f "control_hmi.py" 2>/dev/null')
+    join_job_threads(['Run', 'AutoTest'])
 
     ## after command Run finished, reset the flag
     job_stop_flags['Run'].clear()
@@ -568,11 +617,12 @@ def Destroy():
         set_server_status('destroying')
         for name, flag in job_stop_flags.items(): flag.set()
         current_app.logger.debug(f'[ServerAction][{CMD_ID}] set ALL job_stop_flags as True')
-        os.system('pkill make 2>/dev/null') ## force kill all jobs from make commands
+        stop_running_jobs(['Init', 'Run', 'AutoTest', 'Stop'])
+        os.system('pkill -f "make -f makefile_task3" 2>/dev/null')
+        os.system('pkill -f "scripts/run_full_mmts_batch.py" 2>/dev/null')
+        os.system('pkill -f "control_hmi.py" 2>/dev/null')
 
-        for name, t in job_thread.items():
-            if t and t.is_alive():
-                t.join() # waiting for all jobs finished
+        join_job_threads(['Init', 'Run', 'AutoTest', 'Stop'])
 
         ## after command Run finished, reset the flag
         for name, flag in job_stop_flags.items(): flag.clear()
