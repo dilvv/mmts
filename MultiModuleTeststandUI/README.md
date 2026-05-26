@@ -46,6 +46,8 @@ make -f makefile_initialize_this_GUI flaskb_make_virtual_environment
 make -f makefile_initialize_this_GUI flaskc_make_app_as_system_service
 ```
 
+Note: PyMeasure is pinned to `0.14.0` in the virtual environment setup because newer PyMeasure releases changed the Keithley 2400 implementation.
+
 
 
 
