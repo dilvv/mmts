@@ -12,6 +12,8 @@ from PythonTools.batch_status import read_status
 from PythonTools.server_status import isCommandRunable
 import re
 import os
+import sys
+import yaml
 ### HTTP status codes https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
 
 JOBMODE = 'task3' # IV scan
@@ -93,6 +95,29 @@ def ExecCMD(jobID:str, confDICT:dict):
         return f'{make_command} -f makefile_task3 destroy JobName=Destroy'
 
 
+def module_ids_from_conf(confDICT:dict):
+    return {
+        key.replace('moduleID', ''): val
+        for key, val in confDICT.items()
+        if key.startswith('moduleID')
+    }
+
+
+def build_autotest_config(confDICT:dict):
+    config_template = 'data/full_batch_demo.example.yml'
+    runtime_dir = os.path.join('tmp_files', 'runtime')
+    os.makedirs(runtime_dir, exist_ok=True)
+    runtime_config = os.path.join(runtime_dir, 'full_batch_web.yml')
+
+    with open(config_template, 'r', encoding='utf-8') as fin:
+        cfg = yaml.safe_load(fin)
+
+    cfg['module_ids'] = module_ids_from_conf(confDICT)
+    with open(runtime_config, 'w', encoding='utf-8') as fout:
+        yaml.safe_dump(cfg, fout, sort_keys=False)
+    return runtime_config
+
+
 
 #logger = logging.getLogger('flask.app')
 logger = logging.getLogger('werkzeug')
@@ -104,6 +129,7 @@ app = Blueprint('app_task3', __name__)
 job_stop_flags = {
         'Init': threading.Event(),
         'Run': threading.Event(),
+        'AutoTest': threading.Event(),
         'Stop': threading.Event(),
         'Destroy': threading.Event(),
         }
@@ -129,6 +155,7 @@ def check_jobmode() -> bool:
 job_thread = {
         'Init': None,
         'Run': None,
+        'AutoTest': None,
         'Stop': None,
         'Destroy': None,
         }
@@ -258,7 +285,7 @@ def Init():
 
     return '', 204
 
-alphanumeric_validator = Regexp("^[a-zA-Z0-9\-]*$", message="Only letters and numbers and dash allowed.")
+alphanumeric_validator = Regexp(r"^[a-zA-Z0-9\-]*$", message="Only letters and numbers and dash allowed.")
 #alphanumeric_validator = Regexp("^[a-zA-Z0-9]*$", message="Only letters and numbers allowed.")
 class ConfigForm(FlaskForm):
     currentTEMPERATURE = StringField("currentTEMPERATURE", validators=[InputRequired(message='Temperature Missing')])
@@ -410,6 +437,45 @@ def Run():
     return '', 204
 
 
+@app.route('/autotest', methods=['POST'])
+def AutoTest():
+    ''' run full demo batch automation from the current web configuration '''
+    CMD_ID = 'AutoTest'
+    current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got an {CMD_ID} command')
+    if not check_jobmode(): return '', 204
+
+    job_stop_flags[CMD_ID].clear()
+    if isCommandRunable(shared_state.server_status, 'Run'):
+        populated_modules = {k: v for k, v in module_ids_from_conf(CONF_DICT).items() if v}
+        if not populated_modules:
+            return jsonify({'status': 'error', 'errors': 'No module IDs configured for AutoTest.'}), 400
+
+        set_server_status('running')
+        current_app.logger.debug(f'[ServerAction][{CMD_ID}] activate AutoTest command')
+
+        def background_worker():
+            try:
+                config_path = build_autotest_config(CONF_DICT)
+                status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
+                command = (
+                    f'{sys.executable} scripts/run_full_mmts_batch_demo.py '
+                    f'-c {config_path} --status-file {status_path}'
+                )
+                run_command(command, CMD_ID)
+            finally:
+                set_server_status('idle')
+                logger.info("AutoTest job status set to idle.")
+            logger.info('AutoTest background worker ended')
+
+        t = threading.Thread(target=background_worker)
+        t.start()
+        set_thread(CMD_ID, t)
+    else:
+        current_app.logger.debug(f'[ServerAction][{CMD_ID}] Current status is {shared_state.server_status}. reject "{CMD_ID}" command')
+
+    return '', 204
+
+
 @app.route('/stop', methods=['POST'])
 def Stop():
     if not check_jobmode(): return '', 204
@@ -417,14 +483,18 @@ def Stop():
 
     set_server_status('stopping')
     job_stop_flags['Run'].set()
+    job_stop_flags['AutoTest'].set()
     current_app.logger.debug(f'[ServerAction][Stop] set job_stop_flags as True')
 
     os.system('pkill make 2>/dev/null') ## force kill all jobs from make commands
     if job_thread['Run'] and job_thread['Run'].is_alive():
         job_thread['Run'].join()
+    if job_thread['AutoTest'] and job_thread['AutoTest'].is_alive():
+        job_thread['AutoTest'].join()
 
     ## after command Run finished, reset the flag
     job_stop_flags['Run'].clear()
+    job_stop_flags['AutoTest'].clear()
 
     def background_worker():
         try:

@@ -15,6 +15,7 @@
           <button type="button" id="initBtn"          class="ctrlbtn" onclick="initJob()">Initialize</button>
           <button type="button" id="confBtn" disabled class="ctrlbtn"                    >Configure</button>
           <button type="button" id="execBtn" disabled class="ctrlbtn" onclick="execJob()">Run</button>
+          <button type="button" id="autoTestBtn" disabled class="ctrlbtn" onclick="autoTestJob()">AutoTest</button>
           <button type="button" id="stopBtn" disabled class="ctrlbtn" onclick="stopJob()">Stop</button>
           <button type="button" id="exitBtn" disabled class="ctrlbtn" onclick="exitJob()">Destroy</button>
         </div>
@@ -214,6 +215,7 @@
       const initBtn = document.getElementById('initBtn');
       const confBtn = document.getElementById('confBtn');
       const execBtn = document.getElementById('execBtn');
+      const autoTestBtn = document.getElementById('autoTestBtn');
       const stopBtn = document.getElementById('stopBtn');
       const exitBtn = document.getElementById('exitBtn');
 
@@ -224,6 +226,7 @@
             initBtn.disabled = true ;
             confBtn.disabled = true ;
             execBtn.disabled = true ;
+            autoTestBtn.disabled = true ;
             stopBtn.disabled = true ;
             exitBtn.disabled = true ;
             document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true ; });
@@ -247,6 +250,7 @@
         initBtn.disabled = false;
         confBtn.disabled = true ;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -255,6 +259,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = true ;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -263,6 +268,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = false;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -271,6 +277,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = false;
         execBtn.disabled = false;
+        autoTestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -279,6 +286,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = true ;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = false;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true; });
@@ -287,6 +295,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = false;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -295,6 +304,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = true ;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -303,6 +313,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = false;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -311,6 +322,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = true ;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -319,6 +331,7 @@
         initBtn.disabled = false;
         confBtn.disabled = true ;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -327,6 +340,7 @@
         initBtn.disabled = true ;
         confBtn.disabled = true ;
         execBtn.disabled = true ;
+        autoTestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -399,6 +413,10 @@
 
     async function initJob() {  execjob('init'); document.getElementById('daqSelect').options.length=1; document.getElementById('daqNewOpt').innerText=""; }
     async function execJob() { execjob('run'); }
+    async function autoTestJob() {
+      const configured = await configureTask3(false);
+      if (configured) execjob('autotest');
+    }
     async function stopJob() { execjob('stop'); }
     async function exitJob() { execjob('destroy'); }
 
@@ -408,19 +426,16 @@
 
   <script>
     document.getElementById('confBtn').addEventListener('click', function() {
-      document.getElementById('pymodule_configurations').dispatchEvent(new Event('submit', { cancelable: true }));
+      configureTask3(true);
     });
-    document.getElementById('pymodule_configurations').addEventListener('submit', function(e) {
-      // 🔹 Trigger HTML5 validation
-      if (!this.checkValidity()) {
-        e.preventDefault();        // stop submission
-        this.reportValidity();     // show browser validation UI
-        return;
+    async function configureTask3(showSuccessAlert) {
+      const form = document.getElementById('pymodule_configurations');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return false;
       }
 
-      e.preventDefault();  // Prevent normal form submission
-
-      const formData = new FormData(this);
+      const formData = new FormData(form);
       const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
       const obj = {};
       console.info(formData);
@@ -428,32 +443,31 @@
         obj[key] = value;
       });
 
-      fetch('/task3/submit', {
+      try {
+        const response = await fetch('/task3/submit', {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrfToken  // <-- add this header
         },
         body: JSON.stringify(obj)
-      })
-        .then(response => {
-          if (!response.ok) return response.json().then(err => Promise.reject(err));
-          return response.json();
-        })
-        .then(data => {
-          if (data.status === 'success') {
-            alert(data.message);   // or update some div with the message
-            // Disable inputs
-            //document.querySelectorAll('#configForm input').forEach(input => input.disabled = true);
-            //document.querySelector('#configForm button[type="submit"]').disabled = true;
-          } else {
-            // Show validation errors if any
-            alert('Error: ' + JSON.stringify(data.errors));
-          }
-        })
-        .catch(error => {
-          alert('Submission failed: ' + JSON.stringify(error));
         });
+        const data = await response.json();
+        if (!response.ok) throw data;
+        if (data.status === 'success') {
+          if (showSuccessAlert) alert(data.message);
+          updateStatus();
+          return true;
+        }
+        alert('Error: ' + JSON.stringify(data.errors));
+      } catch (error) {
+        alert('Submission failed: ' + JSON.stringify(error));
+      }
+      return false;
+    }
+    document.getElementById('pymodule_configurations').addEventListener('submit', function(e) {
+      e.preventDefault();
+      configureTask3(true);
     });
   </script>
   <script>
@@ -544,7 +558,7 @@ box-sizing: border-box;
     height:60px;
   }
   .ctrlbtn{
-    width:18%;
+    width:15%;
     height:30px;
     margin:5px 5px 5px 5px;
   }
