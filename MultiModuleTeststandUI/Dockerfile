@@ -41,8 +41,9 @@ RUN mamba install -y -n ${ENVNAME} -c conda-forge \
     psycopg \
     && mamba clean -a -y
 
-# Optional: some Flask-SocketIO deployments prefer eventlet
-RUN mamba run -n ${ENVNAME} pip install --no-cache-dir eventlet
+# Optional: some Flask-SocketIO deployments prefer eventlet.
+# python-snap7 provides the snap7 import and v2.x supports Python 3.9.
+RUN mamba run -n ${ENVNAME} pip install --no-cache-dir eventlet "python-snap7<3"
 
 ENV PYTHONPATH=/app
 ENV LOG_LEVEL=INFO
