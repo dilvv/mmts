@@ -79,6 +79,14 @@ make -f makefile_task3 initialize
 
 `AutoTest` 不使用网页上的温度和湿度控件。它使用 `data/full_batch_config.example.yml` 里的正式 batch IV 设置。
 
+如果 IV 初始化时发现 VITREK 或 Keithley RS232 设备没有连接，AutoTest 会自动执行：
+
+```bash
+make -f makefile_task3 destroy
+```
+
+并把网页 server 状态切到 `destroyed`。
+
 ## Demo 和正式版区别
 
 Demo 版：

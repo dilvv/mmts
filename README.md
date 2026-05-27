@@ -74,6 +74,14 @@ So `AutoTest` includes the web configuration step and is equivalent to running t
 
 `AutoTest` does not use the web page temperature or humidity controls. It uses the formal batch IV settings from `data/full_batch_config.example.yml`.
 
+If IV initialization fails because the VITREK or Keithley RS232 devices are not connected, AutoTest automatically runs:
+
+```bash
+make -f makefile_task3 destroy
+```
+
+and moves the web server state to `destroyed`.
+
 The task3 page reads `tmp_files/runtime/current_batch_status.json` and displays progress in the `Auto Batch Status` panel.
 
 ## Automation Scripts

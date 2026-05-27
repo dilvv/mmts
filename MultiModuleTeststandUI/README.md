@@ -123,6 +123,14 @@ make -f makefile_task3 initialize
 
 `AutoTest` does not use the web page temperature or humidity controls. It uses the formal batch IV settings from `data/full_batch_config.example.yml`.
 
+If IV initialization fails because the VITREK or Keithley RS232 devices are not connected, AutoTest automatically runs:
+
+```bash
+make -f makefile_task3 destroy
+```
+
+and moves the web server state to `destroyed`.
+
 ## Demo Full-Batch Automation
 
 The demo runner is:

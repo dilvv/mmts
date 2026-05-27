@@ -8,7 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from wtforms.validators import DataRequired, Regexp, InputRequired, NumberRange
 from wtforms import StringField, SubmitField, RadioField, IntegerField
 import flask_apps.shared_state as shared_state
-from PythonTools.batch_status import read_status
+from PythonTools.batch_status import read_status, update_status
 from PythonTools.server_status import isCommandRunable
 import re
 import os
@@ -337,6 +337,7 @@ def run_command(cmd: str, jobID):
         else:
             set_server_status('error')
             logger.info(f'[{jobID}][error] run_command() sets system to error. Please destroy and initialize it')
+        return process.returncode
 
 
 
@@ -558,9 +559,27 @@ def AutoTest():
                     f'{sys.executable} scripts/run_full_mmts_batch.py '
                     f'-c {config_path} --status-file {status_path}'
                 )
-                run_command(command, CMD_ID)
+                returncode = run_command(command, CMD_ID)
+                batch_status = read_status(path=status_path)
+                phase = str(batch_status.get('phase', ''))
+                if returncode != 0 and not job_stop_flags[CMD_ID].is_set() and phase.endswith('_initialize'):
+                    logger.warning(f'[AutoTest] IV initialization failed at {phase}; running destroy automatically.')
+                    update_status({
+                        'status': 'error',
+                        'phase_state': 'destroying',
+                        'phase_summary': 'IV initialization failed; running destroy automatically.',
+                    }, path=status_path)
+                    set_server_status('destroying')
+                    run_command(ExecCMD('Destroy', CONF_DICT), 'Destroy')
+                    set_server_status('destroyed')
+                    update_status({
+                        'status': 'destroyed',
+                        'phase_state': 'destroyed',
+                        'phase_summary': 'IV initialization failed; AutoTest ran destroy.',
+                    }, path=status_path)
             finally:
-                set_server_status('idle')
+                if shared_state.server_status not in ['error', 'destroyed', 'destroying']:
+                    set_server_status('idle')
                 logger.info("AutoTest job status set to idle.")
             logger.info('AutoTest background worker ended')
 
