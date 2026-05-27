@@ -188,6 +188,7 @@ Current practical note:
 - `AutoTest` uses the formal runner.
 - The generated `tmp_files/runtime/full_batch_web.yml` is based on `data/full_batch_config.example.yml`.
 - The web form replaces the top-level `module_ids` block before starting the formal runner.
+- `IV3 Test` is the manual final-retest shortcut next to `AutoTest`. It saves the current web form module IDs, reads `iv_scans.iv3` from `data/full_batch_config.example.yml`, and runs `make -f makefile_task3 initialize && make -f makefile_task3 run ...`.
 
 ## Batch Status Display
 

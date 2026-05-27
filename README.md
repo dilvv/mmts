@@ -74,6 +74,18 @@ So `AutoTest` includes the web configuration step and is equivalent to running t
 
 `AutoTest` does not use the web page temperature or humidity controls. It uses the formal batch IV settings from `data/full_batch_config.example.yml`.
 
+`IV3 Test` is a manual shortcut next to `AutoTest` for the final retest case. It saves the current web form module IDs, reads the formal `iv_scans.iv3` values, and is equivalent to:
+
+```bash
+make -f makefile_task3 initialize && make -f makefile_task3 run \
+  moduleID... \
+  currentTEMPERATURE=20 \
+  currentHUMIDITY=0 \
+  maxVOLTAGE=850
+```
+
+The exact temperature, humidity, and voltage values come from `data/full_batch_config.example.yml`.
+
 If IV initialization fails because the VITREK or Keithley RS232 devices are not connected, AutoTest automatically runs:
 
 ```bash

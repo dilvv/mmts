@@ -14,6 +14,7 @@
         <div id="i1sqf" class="gjs-cell">
           <div class="autotest-row">
             <button type="button" id="autoTestBtn" disabled class="ctrlbtn auto-test-btn" onclick="autoTestJob()">AutoTest</button>
+            <button type="button" id="iv3TestBtn" disabled class="ctrlbtn auto-test-btn" onclick="iv3TestJob()">IV3 Test</button>
           </div>
           <div class="manual-action-row">
           <button type="button" id="initBtn"          class="ctrlbtn" onclick="initJob()">Initialize</button>
@@ -219,6 +220,7 @@
       const confBtn = document.getElementById('confBtn');
       const execBtn = document.getElementById('execBtn');
       const autoTestBtn = document.getElementById('autoTestBtn');
+      const iv3TestBtn = document.getElementById('iv3TestBtn');
       const stopBtn = document.getElementById('stopBtn');
       const exitBtn = document.getElementById('exitBtn');
 
@@ -230,6 +232,7 @@
             confBtn.disabled = true ;
             execBtn.disabled = true ;
             autoTestBtn.disabled = true ;
+            iv3TestBtn.disabled = true ;
             stopBtn.disabled = true ;
             exitBtn.disabled = true ;
             document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true ; });
@@ -254,6 +257,7 @@
         confBtn.disabled = true ;
         execBtn.disabled = true ;
         autoTestBtn.disabled = false;
+        iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -263,6 +267,7 @@
         confBtn.disabled = true ;
         execBtn.disabled = true ;
         autoTestBtn.disabled = true ;
+        iv3TestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -272,6 +277,7 @@
         confBtn.disabled = false;
         execBtn.disabled = true ;
         autoTestBtn.disabled = false;
+        iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -281,6 +287,7 @@
         confBtn.disabled = false;
         execBtn.disabled = false;
         autoTestBtn.disabled = false;
+        iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -290,6 +297,7 @@
         confBtn.disabled = true ;
         execBtn.disabled = true ;
         autoTestBtn.disabled = true ;
+        iv3TestBtn.disabled = true ;
         stopBtn.disabled = false;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true; });
@@ -299,6 +307,7 @@
         confBtn.disabled = false;
         execBtn.disabled = true ;
         autoTestBtn.disabled = false;
+        iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -308,6 +317,7 @@
         confBtn.disabled = true ;
         execBtn.disabled = true ;
         autoTestBtn.disabled = true ;
+        iv3TestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -317,6 +327,7 @@
         confBtn.disabled = false;
         execBtn.disabled = true ;
         autoTestBtn.disabled = false;
+        iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -326,6 +337,7 @@
         confBtn.disabled = true ;
         execBtn.disabled = true ;
         autoTestBtn.disabled = true ;
+        iv3TestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -335,6 +347,7 @@
         confBtn.disabled = true ;
         execBtn.disabled = true ;
         autoTestBtn.disabled = false;
+        iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -344,6 +357,7 @@
         confBtn.disabled = true ;
         execBtn.disabled = true ;
         autoTestBtn.disabled = true ;
+        iv3TestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
@@ -417,6 +431,12 @@
     async function initJob() {  execjob('init'); document.getElementById('daqSelect').options.length=1; document.getElementById('daqNewOpt').innerText=""; }
     async function execJob() { execjob('run'); }
     async function autoTestJob() {
+      runBatchButton('autotest', 'AutoTest failed: ');
+    }
+    async function iv3TestJob() {
+      runBatchButton('iv3test', 'IV3 Test failed: ');
+    }
+    async function runBatchButton(routeName, errorPrefix) {
       const form = document.getElementById('pymodule_configurations');
       const formData = new FormData(form);
       const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
@@ -424,7 +444,7 @@
       formData.forEach((value, key) => {
         obj[key] = value;
       });
-      const response = await fetch('/task3/autotest', {
+      const response = await fetch('/task3/' + routeName, {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -434,7 +454,7 @@
       });
       if (!response.ok) {
         const error = await response.json();
-        alert('AutoTest failed: ' + JSON.stringify(error));
+        alert(errorPrefix + JSON.stringify(error));
       }
       updateStatus();
     }

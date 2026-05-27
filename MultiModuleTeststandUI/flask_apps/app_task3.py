@@ -119,6 +119,20 @@ def build_autotest_config(confDICT:dict):
     return runtime_config
 
 
+def build_batch_iv_command(scan_name:str, confDICT:dict):
+    with open('data/full_batch_config.example.yml', 'r', encoding='utf-8') as fin:
+        cfg = yaml.safe_load(fin)
+    scan_cfg = cfg['iv_scans'][scan_name]
+    opts = []
+    for position, module_id in module_ids_from_conf(confDICT).items():
+        if module_id:
+            opts.append(f'moduleID{position}={module_id}')
+    opts.append(f"currentTEMPERATURE={scan_cfg['temperature']}")
+    opts.append(f"currentHUMIDITY={scan_cfg['humidity']}")
+    opts.append(f"maxVOLTAGE={scan_cfg['max_voltage']}")
+    return 'make -f makefile_task3 initialize && make -f makefile_task3 run ' + ' '.join(opts)
+
+
 def save_config_from_json(json_data:dict, require_run_fields=True):
     if not json_data:
         return False, {'message': 'Missing JSON data'}
@@ -171,6 +185,7 @@ job_stop_flags = {
         'Init': threading.Event(),
         'Run': threading.Event(),
         'AutoTest': threading.Event(),
+        'IV3Test': threading.Event(),
         'Stop': threading.Event(),
         'Destroy': threading.Event(),
         }
@@ -197,6 +212,7 @@ job_thread = {
         'Init': None,
         'Run': None,
         'AutoTest': None,
+        'IV3Test': None,
         'Stop': None,
         'Destroy': None,
         }
@@ -204,6 +220,7 @@ job_process = {
         'Init': None,
         'Run': None,
         'AutoTest': None,
+        'IV3Test': None,
         'Stop': None,
         'Destroy': None,
         }
@@ -592,23 +609,94 @@ def AutoTest():
     return '', 204
 
 
+@app.route('/iv3test', methods=['POST'])
+def IV3Test():
+    ''' run only the third formal IV scan from the current web configuration '''
+    CMD_ID = 'IV3Test'
+    current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got an {CMD_ID} command')
+    if not check_jobmode(): return '', 204
+
+    ok, errors = save_config_from_json(request.get_json(), require_run_fields=False)
+    if not ok:
+        current_app.logger.warning(f'[IV3Test] Validation errors: {errors}')
+        return jsonify({'status': 'error', 'errors': errors}), 400
+
+    if shared_state.server_status in ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']:
+        populated_modules = {k: v for k, v in module_ids_from_conf(CONF_DICT).items() if v}
+        if not populated_modules:
+            return jsonify({'status': 'error', 'errors': 'No module IDs configured for IV3Test.'}), 400
+
+        job_stop_flags[CMD_ID].clear()
+        set_server_status('running')
+        current_app.logger.debug(f'[ServerAction][{CMD_ID}] activate IV3Test command')
+
+        def background_worker():
+            status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
+            try:
+                update_status({
+                    'status': 'running',
+                    'phase': 'iv3_manual',
+                    'phase_state': 'running',
+                    'phase_summary': 'Running manual third IV test from web button.',
+                }, path=status_path)
+                returncode = run_command(build_batch_iv_command('iv3', CONF_DICT), CMD_ID)
+                if returncode == 0:
+                    update_status({
+                        'status': 'completed',
+                        'phase': 'iv3_manual',
+                        'phase_state': 'completed',
+                        'phase_summary': 'Manual third IV test completed.',
+                    }, path=status_path)
+                elif not job_stop_flags[CMD_ID].is_set():
+                    update_status({
+                        'status': 'destroying',
+                        'phase': 'iv3_manual',
+                        'phase_state': 'failed',
+                        'phase_summary': 'Manual third IV test failed; running destroy automatically.',
+                    }, path=status_path)
+                    set_server_status('destroying')
+                    destroy_returncode = run_command(ExecCMD('Destroy', CONF_DICT), 'Destroy')
+                    update_status({
+                        'status': 'destroyed' if destroy_returncode == 0 else 'error',
+                        'phase': 'iv3_manual',
+                        'phase_state': 'failed',
+                        'phase_summary': 'Manual third IV test failed; destroy command finished.',
+                    }, path=status_path)
+                    if destroy_returncode == 0:
+                        set_server_status('destroyed')
+            finally:
+                if shared_state.server_status not in ['error', 'destroyed', 'destroying']:
+                    set_server_status('idle')
+                logger.info("IV3Test job status set to idle.")
+            logger.info('IV3Test background worker ended')
+
+        t = threading.Thread(target=background_worker)
+        t.start()
+        set_thread(CMD_ID, t)
+    else:
+        current_app.logger.debug(f'[ServerAction][{CMD_ID}] Current status is {shared_state.server_status}. reject "{CMD_ID}" command')
+
+    return '', 204
+
+
 @app.route('/stop', methods=['POST'])
 def Stop():
     if not check_jobmode(): return '', 204
     CMD_ID = 'Stop'
 
     set_server_status('stopping')
-    stop_running_jobs(['Run', 'AutoTest'])
+    stop_running_jobs(['Run', 'AutoTest', 'IV3Test'])
     current_app.logger.debug(f'[ServerAction][Stop] set job_stop_flags as True')
 
     os.system('pkill -f "make -f makefile_task3" 2>/dev/null')
     os.system('pkill -f "scripts/run_full_mmts_batch.py" 2>/dev/null')
     os.system('pkill -f "control_hmi.py" 2>/dev/null')
-    join_job_threads(['Run', 'AutoTest'])
+    join_job_threads(['Run', 'AutoTest', 'IV3Test'])
 
     ## after command Run finished, reset the flag
     job_stop_flags['Run'].clear()
     job_stop_flags['AutoTest'].clear()
+    job_stop_flags['IV3Test'].clear()
 
     def background_worker():
         try:
@@ -636,12 +724,12 @@ def Destroy():
         set_server_status('destroying')
         for name, flag in job_stop_flags.items(): flag.set()
         current_app.logger.debug(f'[ServerAction][{CMD_ID}] set ALL job_stop_flags as True')
-        stop_running_jobs(['Init', 'Run', 'AutoTest', 'Stop'])
+        stop_running_jobs(['Init', 'Run', 'AutoTest', 'IV3Test', 'Stop'])
         os.system('pkill -f "make -f makefile_task3" 2>/dev/null')
         os.system('pkill -f "scripts/run_full_mmts_batch.py" 2>/dev/null')
         os.system('pkill -f "control_hmi.py" 2>/dev/null')
 
-        join_job_threads(['Init', 'Run', 'AutoTest', 'Stop'])
+        join_job_threads(['Init', 'Run', 'AutoTest', 'IV3Test', 'Stop'])
 
         ## after command Run finished, reset the flag
         for name, flag in job_stop_flags.items(): flag.clear()
