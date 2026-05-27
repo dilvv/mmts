@@ -227,7 +227,7 @@ PLC status code mapping comes from `../PLC_toolkits_mqtt_NTU/plc_io.py`:
 The batch sequence currently waits for:
 
 ```text
-standby -> dewpoint ready -> IV1 -> cooling -> cooling countdown -> IV2 -> standby -> remaining cycles -> standby -> IV3
+standby -> IV1 -> dewpoint ready -> cooling -> cooling countdown -> IV2 -> standby -> remaining cycles -> standby -> IV3
 ```
 
 Warming parameters are still configured through `temp_high` and `idle_warm_min`; the runner does not currently use `code 3` as a separate checkpoint.

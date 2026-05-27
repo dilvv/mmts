@@ -243,6 +243,8 @@ def main():
         if precheck.get("require_standby", True) and snapshot["plc_status_code"] != 1:
             raise RuntimeError(f"PLC is not in standby. Current status: {snapshot}")
 
+        run_iv_scan("iv1", iv_scans["iv1"], cfg["module_ids"], args.status_file)
+
         if precheck.get("dewpoint_max_C") is not None:
             wait_for_dewpoint(
                 client=client,
@@ -253,7 +255,6 @@ def main():
                 poll_seconds=args.poll_seconds,
             )
 
-        run_iv_scan("iv1", iv_scans["iv1"], cfg["module_ids"], args.status_file)
         run_cycle("cycle1_start", cycle_cfg.get("first_cycle", "HMI_Control.yml"), args.status_file)
         wait_for_status_code(
             name="cycle1_started",

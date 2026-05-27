@@ -107,8 +107,8 @@ Demo 版：
 
 ```text
 precheck
--> 等 dewpoint
 -> IV1
+-> 等 dewpoint
 -> 第一轮温循
 -> 等 cooling down
 -> 等 cooling countdown

@@ -116,8 +116,8 @@ The intended full-batch sequence is:
 
 ```text
 precheck
--> wait for dewpoint
 -> IV1
+-> wait for dewpoint
 -> first thermal cycle
 -> wait for cooling down
 -> wait for cooling countdown
