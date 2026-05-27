@@ -39,4 +39,8 @@ def write_status(payload, path=None, base_dir=None):
 def update_status(patch, path=None, base_dir=None):
     current = read_status(path=path, base_dir=base_dir)
     current.update(patch)
+    status = current.get("status")
+    phase_state = current.get("phase_state")
+    if "error_message" not in patch and status != "error" and phase_state != "error":
+        current.pop("error_message", None)
     return write_status(current, path=path, base_dir=base_dir)
