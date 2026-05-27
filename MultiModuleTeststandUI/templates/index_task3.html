@@ -248,7 +248,8 @@
       if (batchStatus.phase_summary) batchLines.push(batchStatus.phase_summary);
       if (batchStatus.plc && batchStatus.plc.plc_status_text) batchLines.push(`plc: ${batchStatus.plc.plc_status_text}`);
       if (batchStatus.plc && batchStatus.plc.min_dewpoint_C !== undefined) batchLines.push(`min dewpoint: ${batchStatus.plc.min_dewpoint_C} C`);
-      if (batchStatus.error_message) batchLines.push(`error: ${batchStatus.error_message}`);
+      const batchHasCurrentError = batchStatus.status === 'error' || batchStatus.phase_state === 'error';
+      if (batchHasCurrentError && batchStatus.error_message) batchLines.push(`error: ${batchStatus.error_message}`);
       if (batchStatus.updated_at) batchLines.push(`updated: ${batchStatus.updated_at}`);
       document.getElementById('batchStatusText').innerText = batchLines.length ? batchLines.join('\n') : 'No auto batch status file yet.';
 
