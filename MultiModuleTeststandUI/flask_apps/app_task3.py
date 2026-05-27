@@ -577,22 +577,23 @@ def AutoTest():
                     f'-c {config_path} --status-file {status_path}'
                 )
                 returncode = run_command(command, CMD_ID)
-                batch_status = read_status(path=status_path)
-                phase = str(batch_status.get('phase', ''))
-                if returncode != 0 and not job_stop_flags[CMD_ID].is_set() and phase.endswith('_initialize'):
-                    logger.warning(f'[AutoTest] IV initialization failed at {phase}; running destroy automatically.')
+                if returncode != 0 and not job_stop_flags[CMD_ID].is_set():
+                    batch_status = read_status(path=status_path)
+                    phase = str(batch_status.get('phase', 'unknown'))
+                    logger.warning(f'[AutoTest] AutoTest failed with exit code {returncode} at {phase}; running destroy automatically.')
                     update_status({
                         'status': 'error',
                         'phase_state': 'destroying',
-                        'phase_summary': 'IV initialization failed; running destroy automatically.',
+                        'phase_summary': f'AutoTest failed with exit code {returncode}; running destroy automatically.',
                     }, path=status_path)
                     set_server_status('destroying')
-                    run_command(ExecCMD('Destroy', CONF_DICT), 'Destroy')
-                    set_server_status('destroyed')
+                    destroy_returncode = run_command(ExecCMD('Destroy', CONF_DICT), 'Destroy')
+                    if destroy_returncode == 0:
+                        set_server_status('destroyed')
                     update_status({
-                        'status': 'destroyed',
-                        'phase_state': 'destroyed',
-                        'phase_summary': 'IV initialization failed; AutoTest ran destroy.',
+                        'status': 'destroyed' if destroy_returncode == 0 else 'error',
+                        'phase_state': 'destroyed' if destroy_returncode == 0 else 'error',
+                        'phase_summary': 'AutoTest failed; destroy command finished.',
                     }, path=status_path)
             finally:
                 if shared_state.server_status not in ['error', 'destroyed', 'destroying']:
