@@ -15,6 +15,7 @@
           <div class="autotest-row">
             <button type="button" id="autoTestBtn" disabled class="ctrlbtn auto-test-btn" onclick="autoTestJob()">AutoTest</button>
             <button type="button" id="iv3TestBtn" disabled class="ctrlbtn auto-test-btn" onclick="iv3TestJob()">IV3 Test</button>
+            <button type="button" id="clearModulesBtn" class="ctrlbtn auto-test-btn" onclick="clearModuleNumbers()">Clear Modules</button>
           </div>
           <div class="manual-action-row">
           <button type="button" id="initBtn"          class="ctrlbtn" onclick="initJob()">Initialize</button>
@@ -180,7 +181,7 @@
             <div id="i7v6dg7" class="gjs-cell form-row">
               <button type="button" class="statusModuleID" id="LED7R"></button>
               <label class="labelModuleID">7R</label>
-              <input type="text" placeholder="Module ID" name="moduleID7R" class="inputModuleID" value="{{ currentCONF.get('moduleID7R') | e }}" id="moduleID1R"/>
+              <input type="text" placeholder="Module ID" name="moduleID7R" class="inputModuleID" value="{{ currentCONF.get('moduleID7R') | e }}" id="moduleID7R"/>
             </div>
           </div>
           <div id="i55fvd8" class="gjs-row">
@@ -212,9 +213,65 @@
     </div>
   </section>
   <script>
+    let statusPollInFlight = false;
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    const moduleDraftKey = 'task3ModuleIdDraft';
+
+    function moduleInputs() {
+      return document.querySelectorAll('#pymodule_configurations input[name^="moduleID"]');
+    }
+
+    function saveModuleDraft() {
+      const draft = {};
+      moduleInputs().forEach(input => {
+        draft[input.name] = input.value;
+      });
+      localStorage.setItem(moduleDraftKey, JSON.stringify(draft));
+    }
+
+    function restoreModuleDraft() {
+      const rawDraft = localStorage.getItem(moduleDraftKey);
+      if (!rawDraft) return;
+      try {
+        const draft = JSON.parse(rawDraft);
+        moduleInputs().forEach(input => {
+          if (Object.prototype.hasOwnProperty.call(draft, input.name)) {
+            input.value = draft[input.name];
+          }
+        });
+      } catch (error) {
+        console.warn('Module draft restore failed:', error);
+      }
+    }
+
+    function clearModuleDraft() {
+      localStorage.removeItem(moduleDraftKey);
+    }
+
     async function updateStatus() {
-      const response = await fetch('/task3/status');
-      const data = await response.json();
+      if (statusPollInFlight) return;
+      statusPollInFlight = true;
+      let data;
+      try {
+        const response = await fetchWithTimeout('/task3/status');
+        data = await response.json();
+      } catch (error) {
+        console.warn('Status update failed:', error);
+        document.getElementById('statusText').innerText = 'server: status update failed';
+        return;
+      } finally {
+        statusPollInFlight = false;
+      }
 
       const initBtn = document.getElementById('initBtn');
       const confBtn = document.getElementById('confBtn');
@@ -223,6 +280,7 @@
       const iv3TestBtn = document.getElementById('iv3TestBtn');
       const stopBtn = document.getElementById('stopBtn');
       const exitBtn = document.getElementById('exitBtn');
+      const clearModulesBtn = document.getElementById('clearModulesBtn');
 
       // accept command only if jobmode is empty or task3
       if (data.jobmode !== "" ) {
@@ -235,6 +293,7 @@
             iv3TestBtn.disabled = true ;
             stopBtn.disabled = true ;
             exitBtn.disabled = true ;
+            clearModulesBtn.disabled = true ;
             document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true ; });
             document.getElementById('statusText').innerText = "server is running other task";
             return; // disable all buttons and returned
@@ -261,6 +320,7 @@
         iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
+        clearModulesBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
       if (data.status === 'initializing' ) {
@@ -271,6 +331,7 @@
         iv3TestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
+        clearModulesBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
       if (data.status === 'initialized' ) {
@@ -281,6 +342,7 @@
         iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
+        clearModulesBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
       if (data.status === 'configured' ) {
@@ -291,6 +353,7 @@
         iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
+        clearModulesBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
       if (data.status === 'running' ) {
@@ -301,6 +364,7 @@
         iv3TestBtn.disabled = true ;
         stopBtn.disabled = false;
         exitBtn.disabled = false;
+        clearModulesBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true; });
       }
       if (data.status === 'idle' ) {
@@ -311,6 +375,7 @@
         iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
+        clearModulesBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
       if (data.status === 'stopping' ) {
@@ -321,6 +386,7 @@
         iv3TestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
+        clearModulesBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
       if (data.status === 'stopped' ) {
@@ -331,6 +397,7 @@
         iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
+        clearModulesBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
       if (data.status === 'destroying' ) {
@@ -341,6 +408,7 @@
         iv3TestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
+        clearModulesBtn.disabled = true ;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
       if (data.status === 'destroyed' ) {
@@ -351,6 +419,7 @@
         iv3TestBtn.disabled = false;
         stopBtn.disabled = true ;
         exitBtn.disabled = true ;
+        clearModulesBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
       if (data.status === 'error') {
@@ -361,6 +430,7 @@
         iv3TestBtn.disabled = true ;
         stopBtn.disabled = true ;
         exitBtn.disabled = false;
+        clearModulesBtn.disabled = false;
         document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
       }
 
@@ -416,7 +486,7 @@
 
     async function execjob(varname) {
       const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
-      await fetch('/task3/'+varname, {
+      await fetchWithTimeout('/task3/'+varname, {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -445,25 +515,65 @@
       formData.forEach((value, key) => {
         obj[key] = value;
       });
-      const response = await fetch('/task3/' + routeName, {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify(obj)
-      });
-      if (!response.ok) {
-        const error = await response.json();
+      try {
+        const response = await fetchWithTimeout('/task3/' + routeName, {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify(obj)
+        }, 30000);
+        if (!response.ok) {
+          const error = await response.json();
+          alert(errorPrefix + JSON.stringify(error));
+          return;
+        }
+        clearModuleDraft();
+      } catch (error) {
         alert(errorPrefix + JSON.stringify(error));
+        return;
       }
       updateStatus();
     }
     async function stopJob() { execjob('stop'); }
     async function exitJob() { execjob('destroy'); }
+    async function clearModuleNumbers() {
+      const password = prompt('Enter password to clear module numbers:');
+      if (password === null) return;
+      const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
+      try {
+        const response = await fetchWithTimeout('/task3/clear_modules', {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ password })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          alert('Clear modules failed: ' + JSON.stringify(data.errors || data));
+          return;
+        }
+        moduleInputs().forEach(input => {
+          input.value = '';
+        });
+        clearModuleDraft();
+        updateStatus();
+      } catch (error) {
+        alert('Clear modules failed: ' + JSON.stringify(error));
+      }
+    }
 
+    moduleInputs().forEach(input => {
+      input.addEventListener('input', saveModuleDraft);
+    });
     setInterval(updateStatus, 1000);  // Poll every second
-    window.onload = updateStatus;
+    window.onload = function() {
+      restoreModuleDraft();
+      updateStatus();
+    };
   </script>
 
   <script>
@@ -486,7 +596,7 @@
       });
 
       try {
-        const response = await fetch('/task3/submit', {
+        const response = await fetchWithTimeout('/task3/submit', {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -498,6 +608,7 @@
         if (!response.ok) throw data;
         if (data.status === 'success') {
           if (showSuccessAlert) alert(data.message);
+          clearModuleDraft();
           updateStatus();
           return true;
         }

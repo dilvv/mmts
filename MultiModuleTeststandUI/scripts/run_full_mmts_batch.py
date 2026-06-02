@@ -45,7 +45,7 @@ def parse_args():
                         help="Polling interval for PLC state transitions.")
     parser.add_argument("--start-timeout-minutes", type=float, default=30.0,
                         help="Timeout while waiting for a cycle to leave standby.")
-    parser.add_argument("--transition-timeout-minutes", type=float, default=240.0,
+    parser.add_argument("--transition-timeout-minutes", type=float, default=1200.0,
                         help="Timeout for major PLC state transitions.")
     return parser.parse_args()
 

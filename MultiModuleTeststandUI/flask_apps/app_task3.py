@@ -511,6 +511,29 @@ Note: Configuration saved. Please verify the settings.
     return jsonify({'status': 'success', 'message': conf_mesg(CONF_DICT).replace('  ','__')}), 200
 
 
+@app.route('/clear_modules', methods=['POST'])
+def ClearModules():
+    CMD_ID = 'ClearModules'
+    current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got a {CMD_ID} command')
+    if not check_jobmode(): return '', 204
+
+    json_data = request.get_json() or {}
+    if json_data.get('password') != 'IHEPhgcal':
+        return jsonify({'status': 'error', 'errors': 'Wrong password.'}), 403
+
+    if shared_state.server_status not in ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed', 'error']:
+        return jsonify({
+            'status': 'error',
+            'errors': f'Cannot clear module numbers while server status is {shared_state.server_status}.',
+        }), 409
+
+    for varname in CONF_DICT.keys():
+        if varname.startswith('moduleID'):
+            CONF_DICT[varname] = ''
+    current_app.logger.info(f'[ClearModules] Module IDs cleared. Current CONF_DICT: {CONF_DICT}')
+    return jsonify({'status': 'success'}), 200
+
+
 
 
 @app.route('/run', methods=['POST'])
@@ -606,6 +629,10 @@ def AutoTest():
         set_thread(CMD_ID, t)
     else:
         current_app.logger.debug(f'[ServerAction][{CMD_ID}] Current status is {shared_state.server_status}. reject "{CMD_ID}" command')
+        return jsonify({
+            'status': 'error',
+            'errors': f'Cannot start AutoTest while server status is {shared_state.server_status}.',
+        }), 409
 
     return '', 204
 
@@ -676,6 +703,10 @@ def IV3Test():
         set_thread(CMD_ID, t)
     else:
         current_app.logger.debug(f'[ServerAction][{CMD_ID}] Current status is {shared_state.server_status}. reject "{CMD_ID}" command')
+        return jsonify({
+            'status': 'error',
+            'errors': f'Cannot start IV3Test while server status is {shared_state.server_status}.',
+        }), 409
 
     return '', 204
 

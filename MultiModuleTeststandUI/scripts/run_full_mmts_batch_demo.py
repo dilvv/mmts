@@ -53,7 +53,7 @@ def parse_args():
     )
     parser.add_argument("--poll-seconds", type=float, default=10.0)
     parser.add_argument("--start-timeout-minutes", type=float, default=30.0)
-    parser.add_argument("--transition-timeout-minutes", type=float, default=240.0)
+    parser.add_argument("--transition-timeout-minutes", type=float, default=1200.0)
     return parser.parse_args()
 
 
