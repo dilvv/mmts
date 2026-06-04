@@ -15,7 +15,6 @@
           <div class="autotest-row">
             <button type="button" id="autoTestBtn" disabled class="ctrlbtn auto-test-btn" onclick="autoTestJob()">AutoTest</button>
             <button type="button" id="iv3TestBtn" disabled class="ctrlbtn auto-test-btn" onclick="iv3TestJob()">IV3 Test</button>
-            <button type="button" id="clearModulesBtn" class="ctrlbtn auto-test-btn" onclick="clearModuleNumbers()">Clear Modules</button>
           </div>
           <div class="manual-action-row">
           <button type="button" id="initBtn"          class="ctrlbtn" onclick="initJob()">Initialize</button>
@@ -57,6 +56,11 @@
             <div id="icpqsl" class="gjs-cell form-row">
               <label>Humidity</label>
               <input type="text" placeholder="50" name="currentHUMIDITY" class="inputModuleID" required/>
+            </div>
+          </div>
+          <div class="gjs-row">
+            <div class="gjs-cell form-row">
+              <button type="button" id="clearModulesBtn" class="ctrlbtn auto-test-btn" onclick="clearModuleNumbers()">Clear Modules</button>
             </div>
           </div>
         </div>
@@ -539,7 +543,7 @@
     async function stopJob() { execjob('stop'); }
     async function exitJob() { execjob('destroy'); }
     async function clearModuleNumbers() {
-      const password = prompt('Enter password to clear module numbers:');
+      const password = prompt('Enter password to clear module numbers.\nPassword: IHEPhgcal');
       if (password === null) return;
       const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
       try {
