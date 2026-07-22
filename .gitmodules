@@ -1,0 +1,4 @@
+[submodule "MultiModuleTeststandUI"]
+	path = MultiModuleTeststandUI
+	url = https://github.com/dilvv/MultiModuleTeststandUI.git
+	branch = dev
