@@ -1,0 +1,28 @@
+#### deploy this service by docker
+
+dockerINST := mmts:dev
+
+build:
+	docker build -t $(dockerINST) .
+
+run_interactive: ### hint: check README.task3.md for /dev/DAQrs232_HVswitch
+	docker run --rm -it \
+		-p 5001:5001 \
+		--device=/dev/DAQrs232_HVswitch \
+		--device=/dev/DAQrs232_keithley \
+		-v "$${PWD}:/app/" \
+		$(dockerINST)
+run: ## run docker image in background
+	docker run --rm -d \
+		-p 5001:5001 \
+		--device=/dev/DAQrs232_HVswitch \
+		--device=/dev/DAQrs232_keithley \
+		-v "$${PWD}:/app/" \
+		$(dockerINST)
+
+
+docker_service:
+	dnf install docker-ce docker-ce-cli containerd.io
+	systemctl start  docker.service
+	systemctl enable docker.service
+

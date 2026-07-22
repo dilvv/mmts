@@ -1,0 +1,52 @@
+batch: ""
+
+precheck:
+  require_standby: true
+  dewpoint_max_C: -30
+
+cycle_configs:
+  first_cycle: HMI_Control.yml
+  remaining_cycles: HMI_Control_5cycle.yml
+
+iv_scans:
+  iv1:
+    iteration: iteration_1
+    temperature: 23
+    humidity: 50
+    max_voltage: 500
+  iv2:
+    iteration: iteration_2
+    temperature: -40
+    humidity: 0
+    max_voltage: 850
+  iv3:
+    iteration: iteration_4
+    temperature: 20
+    humidity: 0
+    max_voltage: 850
+
+module_ids:
+  1L: ""
+  1C: ""
+  1R: ""
+  2L: ""
+  2C: ""
+  2R: ""
+  3L: ""
+  3C: ""
+  3R: ""
+  4L: ""
+  4C: ""
+  4R: ""
+  5L: ""
+  5C: ""
+  5R: ""
+  6L: ""
+  6C: ""
+  6R: ""
+  7L: ""
+  7C: ""
+  7R: ""
+  8L: ""
+  8C: ""
+  8R: ""

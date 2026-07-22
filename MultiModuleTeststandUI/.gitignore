@@ -1,0 +1,10 @@
+*.pyc
+.*.swp
+.*.swo
+*.log
+*.yaml
+DAQresults/*
+#init_bash_vars.sh
+external_packages/*/
+!external_packages/*.*
+tmp_files/*

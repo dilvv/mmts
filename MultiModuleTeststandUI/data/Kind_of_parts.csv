@@ -1,0 +1,510 @@
+"DISPLAY_NAME","LABEL_TYPECODE","LPNAME"
+"Ti/Kapton Baseplate HD Top","BA-THT","Ti/Kapton Baseplate HD Top"
+"Ti/Kapton Baseplate LD Top","BA-TLT","Ti/Kapton Baseplate LD Top"
+"Ti/Kapton Baseplate LD Bottom","BA-BLT","Ti/Kapton Baseplate LD Bottom"
+"Ti/Kapton Baseplate LD Left","BA-LLT","Ti/Kapton Baseplate LD Left"
+"Ti/Kapton Baseplate LD Right","BA-RLT","Ti/Kapton Baseplate LD Right"
+"Ti/Kapton Baseplate LD Five","BA-5LT","Ti/Kapton Baseplate LD Five"
+"Ti/Kapton Baseplate HD Full","BA-FHT","Ti/Kapton Baseplate HD Full"
+"Ti/Kapton Baseplate LD Full","BA-FLT","Ti/Kapton Baseplate LD Full"
+"CuW/Kapton Baseplate HD Full","BA-FHW","CuW/Kapton Baseplate HD Full"
+"CuW/Kapton Baseplate LD Full","BA-FLW","CuW/Kapton Baseplate LD Full"
+"CF/Kapton Baseplate HD Top","BA-THC","CF Baseplate HD Type 1"
+"CF/Kapton Baseplate HD Bottom","BA-BHC","CF Baseplate HD Type 2"
+"CF/Kapton Baseplate HD Left","BA-LHC","CF Baseplate HD Type 3"
+"CF/Kapton Baseplate HD Right","BA-RHC","CF Baseplate HD Type 4"
+"CF/Kapton Baseplate LD Top","BA-TLC","CF Baseplate LD Type 1"
+"CF/Kapton Baseplate LD Bottom","BA-BLC","CF Baseplate LD Type 2"
+"CF/Kapton Baseplate LD Left","BA-LLC","CF Baseplate LD Type 3"
+"CF/Kapton Baseplate LD Right","BA-RLC","CF Baseplate LD Type 4"
+"CF/Kapton Baseplate LD Five","BA-5LC","CF Baseplate LD Type 5"
+"Cast Scint Tile Module G5R","TM-G5RC","Scintillator Cast Tile Module G5R"
+"Cast Scint Tile Module A5","TM-A5FC","Scintillator Cast Tile Module A5"
+"Cast Scint Tile Module K8R","TM-K8RC","Scintillator Cast Tile Module K8R"
+"HGCAL Detector ROOT",,
+"CuW/Kapton Baseplate Full","BA-F0W","CuW Baseplate Type 0"
+"CF/Kapton Baseplate Full","BA-F0C","CF Baseplate Type 0"
+"HD Engine Full PCB","EH-1BF","Engine-HD-Full-Prod-PCB"
+"HD Engine Full","EH-10F","Engine-HD-Full-Prod"
+"HD Engine Half PCB","EH-1BH","Engine-HD-Half-Prod-PCB"
+"HD Engine Half","EH-10H","Engine-HD-Half-Prod"
+"Scintillator Motherboard PCB","WM-MBB","Scintillator-Motherboard-PCB"
+"Scintillator Motherboard","WM-MB0","Scintillator-Motherboard"
+"Scintillator Wingboard BH","WM-WBH","Scintillator-Wingboard-BH"
+"Scintillator Wingboard FH","WM-WFH","Scintillator-Wingboard-FH"
+"120um Si Sensor HD Halfmoon-B","SH-1MBT","120um Si Sensor HD Halfmoon-S"
+"120um Si Sensor HD Halfmoon-TL","SH-1MTL","120um Si Sensor HD Halfmoon-NW"
+"120um Si Sensor HD Halfmoon-BL","SH-1MBL","120um Si Sensor HD Halfmoon-SW"
+"120um Si Sensor HD Halfmoon-BR","SH-1MBR","120um Si Sensor HD Halfmoon-SE"
+"120um Si Sensor HD Halfmoon-TR","SH-1MTR","120um Si Sensor HD Halfmoon-NE"
+"200um Si Sensor LD Halfmoon-B","SL-2MBT","200um Sensor LD Halfmoon-S"
+"200um Si Sensor LD Halfmoon-TL","SL-2MTL","200um Sensor LD Halfmoon-NW"
+"200um Si Sensor LD Halfmoon-BL","SL-2MBL","200um Sensor LD Halfmoon-SW"
+"200um Si Sensor LD Halfmoon-BR","SL-2MBR","200um Sensor LD Halfmoon-SE"
+"200um Si Sensor LD Halfmoon-TR","SL-2MTR","200um Sensor LD Halfmoon-NE"
+"300um Si Sensor LD Halfmoon-B","SL-3MBT","300um Si Sensor LD Halfmoon-S"
+"300um Si Sensor LD Halfmoon-TL","SL-3MTL","300um Si Sensor LD Halfmoon-NW"
+"300um Si Sensor LD Halfmoon-BL","SL-3MBL","300um Si Sensor LD Halfmoon-SW"
+"300um Si Sensor LD Halfmoon-BR","SL-3MBR","300um Si Sensor LD Halfmoon-SE"
+"300um Si Sensor LD Halfmoon-TR","SL-3MTR","300um Si Sensor LD Halfmoon-NE"
+"Cast Scint Tile Module A6","TM-A6FC","Scintillator Cast Tile Module A6"
+"Cast Scint Tile Module B11","TM-B1FC","Scintillator Cast Tile Module B11"
+"Cast Scint Tile Module B12","TM-B2FC","Scintillator Cast Tile Module B12"
+"Cast Scint Tile Module C5","TM-C5FC","Scintillator Cast Tile Module C5"
+"Cast Scint Tile Module D8","TM-D8FC","Scintillator Cast Tile Module D8"
+"Cast Scint Tile Module E8","TM-E8FC","Scintillator Cast Tile Module E8"
+"Cast Scint Tile Module J12","TM-J2FC","Scintillator Cast Tile Module J12"
+"Cast Scint Tile Module G3L","TM-G3LC","Scintillator Cast Tile Module G3L"
+"Cast Scint Tile Module G3","TM-G3FC","Scintillator Cast Tile Module G3C"
+"Cast Scint Tile Module G3R","TM-G3RC","Scintillator Cast Tile Module G3R"
+"Cast Scint Tile Module G5L","TM-G5LC","Scintillator Cast Tile Module G5L"
+"Cast Scint Tile Module G5","TM-G5FC","Scintillator Cast Tile Module G5C"
+"Cast Scint Tile Module G7L","TM-G7LC","Scintillator Cast Tile Module G7L"
+"Cast Scint Tile Module G7","TM-G7FC","Scintillator Cast Tile Module G7C"
+"Cast Scint Tile Module G7R","TM-G7RC","Scintillator Cast Tile Module G7R"
+"Cast Scint Tile Module G8L","TM-G8LC","Scintillator Cast Tile Module G8L"
+"Cast Scint Tile Module G8","TM-G8FC","Scintillator Cast Tile Module G8C"
+"Cast Scint Tile Module G8R","TM-G8RC","Scintillator Cast Tile Module G8R"
+"Cast Scint Tile Module K11L","TM-K1LC","Scintillator Cast Tile Module K11L"
+"Cast Scint Tile Module K11","TM-K1FC","Scintillator Cast Tile Module K11"
+"Cast Scint Tile Module K11R","TM-K1RC","Scintillator Cast Tile Module K11R"
+"Cast Scint Tile Module K6L","TM-K6LC","Scintillator Cast Tile Module K6L"
+"Cast Scint Tile Module K6C","TM-K6FC","Scintillator Cast Tile Module K6C"
+"Cast Scint Tile Module K6R","TM-K6RC","Scintillator Cast Tile Module K6R"
+"Cast Scint Tile Module K12L","TM-K2LC","Scintillator Cast Tile Module K7L"
+"Cast Scint Tile Module K12","TM-K2FC","Scintillator Cast Tile Module K7C"
+"Cast Scint Tile Module K12R","TM-K2RC","Scintillator Cast Tile Module K7R"
+"Cast Scint Tile Module K8L","TM-K8LC","Scintillator Cast Tile Module K8L"
+"Cast Scint Tile Module K8C","TM-K8FC","Scintillator Cast Tile Module K8C"
+"9mm SiPM","SP-09","9mm SiPM"
+"200 um Si Sensor HD Top","SH-2TXX","200 um Si Sensor HD Top"
+"SiPM QC Card","TS-SPQC","SiPM QC Card"
+"Tile PCB A5 Bare","TP-A5F","Tile PCB A5 Bare"
+"Tile PCB A6 Bare","TP-A6F","Tile PCB A6 Bare"
+"Tile PCB B11 Bare","TP-B1F","Tile PCB B11 Bare"
+"Tile PCB B12 Bare","TP-B2F","Tile PCB B12 Bare"
+"Tile PCB C5 Bare","TP-C5F","Tile PCB C5 Bare"
+"Tile PCB D8 Bare","TP-D8F","Tile PCB D8 Bare"
+"Tile PCB E8 Bare","TP-E8F","Tile PCB E8 Bare"
+"Tile PCB G3L Bare","TP-G3L","Tile PCB G3L Bare"
+"Tile PCB G3R Bare","TP-G3R","Tile PCB G3R Bare"
+"Tile PCB G3 Bare","TP-G3F","Tile PCB G3 Bare"
+"Tile PCB G5L Bare","TP-G5L","Tile PCB G5L Bare"
+"Tile PCB G5R Bare","TP-G5R","Tile PCB G5R Bare"
+"Tile PCB G5 Bare","TP-G5F","Tile PCB G5 Bare"
+"Tile PCB G7L Bare","TP-G7L","Tile PCB G7L Bare"
+"Tile PCB G7R Bare","TP-G7R","Tile PCB G7R Bare"
+"Tile PCB G7 Bare","TP-G7F","Tile PCB G7 Bare"
+"Tile PCB G8L Bare","TP-G8L","Tile PCB G8L Bare"
+"Tile PCB G8R Bare","TP-G8R","Tile PCB G8R Bare"
+"Tile PCB G8 Bare","TP-G8F","Tile PCB G8 Bare"
+"Tile PCB J12 Bare","TP-J2F","Tile PCB J12 Bare"
+"Tile PCB K12L Bare","TP-K2L","Tile PCB K12L Bare"
+"Tile PCB K12R Bare","TP-K2R","Tile PCB K12R Bare"
+"Tile PCB K12 Bare","TP-K2F","Tile PCB K12 Bare"
+"120um HD Si Sensor Wafer","SH-1SXX",
+"200um LD Si Sensor Wafer","SL-2SXX",
+"300um LD Si Sensor Wafer","SL-3SXX",
+"120um Si Sensor HD Full","SH-1FXX","120um Sensor HD Type 0"
+"120um Si Sensor HD Top","SH-1TXX","120um Sensor HD Type 1"
+"120um Si Sensor HD Bottom","SH-1BXX","120um Sensor HD Type 2"
+"120um Si Sensor HD Left","SH-1LXX","120um Sensor HD Type 3"
+"120um Si Sensor HD Right","SH-1RXX","120um Sensor HD Type 4"
+"120um Si Sensor HD Halfmoon-T","SH-1MTP","120um Si Sensor HD Halfmoon-N"
+"200um Si Sensor LD Full","SL-2FXX","200um Sensor LD Type 0"
+"200um Si Sensor LD Top","SL-2TXX","200um Sensor LD Type 1"
+"200um Si Sensor LD Bottom","SL-2BXX","200um Sensor LD Type 2"
+"200um Si Sensor LD Left","SL-2LXX","200um Sensor LD Type 3"
+"200um Si Sensor LD Right","SL-2RXX","200um Sensor LD Type 4"
+"200um Si Sensor LD Five","SL-25XX","200um Sensor LD Type 5"
+"200um Si Sensor LD Halfmoon-T","SL-2MTP","200um Si Sensor LD Halfmoon-N"
+"300um Si Sensor LD Full","SL-3FXX","300um Sensor LD Type 0"
+"300um Si Sensor LD Top","SL-3TXX","300um Sensor LD Type 1"
+"300um Si Sensor LD Bottom","SL-3BXX","300um Sensor LD Type 2"
+"300um Si Sensor LD Left","SL-3LXX","300um Sensor LD Type 3"
+"300um Si Sensor LD Right","SL-3RXX","300um Sensor LD Type 4"
+"300um Si Sensor LD Five","SL-35XX","300um Sensor LD Type 5"
+"300um Si Sensor LD Halfmoon-T","SL-3MTP","300um Si Sensor LD Halfmoon-N"
+"CuW/Kapton Baseplate HD Top","BA-THW","CuW Baseplate HD Type 1"
+"CuW/Kapton Baseplate HD Bottom","BA-BHW","CuW Baseplate HD Type 2"
+"CuW/Kapton Baseplate HD Left","BA-LHW","CuW Baseplate HD Type 3"
+"CuW/Kapton Baseplate HD Right","BA-RHW","CuW Baseplate HD Type 4"
+"CuW/Kapton Baseplate LD Top","BA-TLW","CuW Baseplate LD Type 1"
+"CuW/Kapton Baseplate LD Bottom","BA-BLW","CuW Baseplate LD Type 2"
+"CuW/Kapton Baseplate LD Left","BA-LLW","CuW Baseplate LD Type 3"
+"CuW/Kapton Baseplate LD Right","BA-RLW","CuW Baseplate LD Type 4"
+"CuW/Kapton Baseplate LD Five","BA-5LW","CuW Baseplate LD Type 5"
+"2mm SiPM","SP-02","2mm SiPM"
+"4mm SiPM","SP-04","4mm SiPM"
+"PS Bare Molded Tile BH Ring02","BI-02",
+"PS Bare Molded Tile BH Ring04","BI-04",
+"PS Bare Molded Tile BH Ring06","BI-06",
+"PS Bare Molded Tile BH Ring08","BI-08",
+"PS Bare Molded Tile BH Ring10","BI-10",
+"PS Bare Molded Tile BH Ring12","BI-12",
+"PS Bare Molded Tile BH Ring14","BI-14",
+"PS Bare Molded Tile BH Ring16","BI-16",
+"PS Molded Tile BH Ring02","TI-02",
+"PS Molded Tile BH Ring04","TI-04",
+"PS Molded Tile BH Ring06","TI-06",
+"PS Molded Tile BH Ring08","TI-08",
+"PS Molded Tile BH Ring10","TI-10",
+"PS Molded Tile BH Ring12","TI-12",
+"PS Molded Tile BH Ring14","TI-14",
+"PS Molded Tile BH Ring16","TI-16",
+"Bare Cast Tile FH7","BC-F7",
+"Bare Cast Tile Special 2","BC-S2",
+"Bare Cast Tile Special 5","BC-S5",
+"Molded Tile Special 4","TI-S4","Molded Tile Special 4"
+"Cast Quality Control Tile","TC-99",
+"Cast Tile BH Ring04","TC-04",
+"Cast Tile BH Ring10","TC-10",
+"Cast Tile BH Ring16","TC-16",
+"Cast Tile BH Ring22","TC-22",
+"Cast Tile BH Ring28","TC-28",
+"Cast Tile BH Ring32","TC-32",
+"Cast Tile BH Ring38","TC-38",
+"Bare Cast Tile BH Ring02","BC-02",
+"Bare Cast Tile BH Ring08","BC-08",
+"Bare Cast Tile BH Ring14","BC-14",
+"Bare Cast Tile BH Ring20","BC-20",
+"Bare Cast Tile BH Ring28","BC-28",
+"Bare Cast Tile BH Ring34","BC-34",
+"Bare Cast Tile BH Ring40","BC-40",
+"Cast Tile FH1","TC-F1",
+"Cast Tile FH2","TC-F2",
+"Cast Tile FH3","TC-F3",
+"Cast Tile FH4","TC-F4",
+"Cast Tile FH5","TC-F5",
+"Cast Tile FH6","TC-F6",
+"Cast Tile FH7","TC-F7",
+"Cast Tile FH8","TC-F8",
+"Cast Tile Special 1","TC-S1",
+"Cast Tile Special 2","TC-S2",
+"Cast Tile Special 3","TC-S3",
+"Cast Tile Special 4","TC-S4",
+"Cast Tile Special 5","TC-S5",
+"Cast Tile Special 6","TC-S6",
+"Bare Cast Tile FH1","BC-F1",
+"Bare Cast Tile FH2","BC-F2",
+"Bare Cast Tile FH3","BC-F3",
+"Bare Cast Tile FH4","BC-F4",
+"Bare Cast Tile FH5","BC-F5",
+"Bare Cast Tile FH6","BC-F6",
+"Bare Cast Tile FH8","BC-F8",
+"Bare Cast Tile Special 1","BC-S1",
+"Bare Cast Tile Special 3","BC-S3",
+"Bare Cast Tile Special 4","BC-S4",
+"Bare Cast Tile Special 6","BC-S6",
+"Molded Tile Special 3","TI-S3","Molded Tile Special 3"
+"Molded Tile Special 5","TI-S5","Molded Tile Special 5"
+"Molded Tile Special 6","TI-S6","Molded Tile Special 6"
+"Cast Tile BH Ring00","TC-00",
+"Cast Tile BH Ring02","TC-02",
+"Cast Tile BH Ring06","TC-06",
+"Cast Tile BH Ring08","TC-08",
+"Cast Tile BH Ring12","TC-12",
+"Cast Tile BH Ring14","TC-14",
+"Cast Tile BH Ring18","TC-18",
+"Cast Tile BH Ring20","TC-20",
+"Cast Tile BH Ring24","TC-24",
+"Cast Tile BH Ring26","TC-26",
+"Cast Tile BH Ring30","TC-30",
+"Cast Tile BH Ring34","TC-34",
+"Cast Tile BH Ring36","TC-36",
+"Cast Tile BH Ring40","TC-40",
+"Bare Cast Tile BH Ring00","BC-00",
+"Bare Cast Tile BH Ring04","BC-04",
+"Bare Cast Tile BH Ring06","BC-06",
+"Bare Cast Tile BH Ring10","BC-10",
+"Bare Cast Tile BH Ring12","BC-12",
+"Bare Cast Tile BH Ring16","BC-16",
+"Bare Cast Tile BH Ring18","BC-18",
+"Bare Cast Tile BH Ring22","BC-22",
+"Bare Cast Tile BH Ring24","BC-24",
+"Bare Cast Tile BH Ring26","BC-26",
+"Bare Cast Tile BH Ring30","BC-30",
+"Bare Cast Tile BH Ring32","BC-32",
+"Bare Cast Tile BH Ring36","BC-36",
+"Bare Cast Tile BH Ring38","BC-38",
+"Molded Tile BH Ring18","TI-18",
+"Molded Tile BH Ring20","TI-20",
+"Scint Tileboard A5","TB-A5F","Scintillator Tileboard A5"
+"Scint Tileboard A6","TB-A6F","Scintillator Tileboard A6"
+"Scint Tileboard B11","TB-B1F","Scintillator Tileboard B11"
+"Scint Tileboard B12","TB-B2F","Scintillator Tileboard B12"
+"Scint Tileboard C5","TB-C5F","Scintillator Tileboard C5"
+"Scint Tileboard D8","TB-D8F","Scintillator Tileboard D8"
+"Scint Tileboard E8","TB-E8F","Scintillator Tileboard E8"
+"Scint Tileboard J12","TB-J2F","Scintillator Tileboard J12"
+"Scint Tileboard G3L","TB-G3L","Scintillator Tileboard G3L"
+"Scint Tileboard G3C","TB-G3F","Scintillator Tileboard G3C"
+"Scint Tileboard G3R","TB-G3R","Scintillator Tileboard G3R"
+"Scint Tileboard G4L","TB-G5L","Scintillator Tileboard G5L"
+"Scint Tileboard G4C","TB-G5F","Scintillator Tileboard G5C"
+"Scint Tileboard G4R","TB-G5R","Scintillator Tileboard G5R"
+"Scint Tileboard G7L","TB-G7L","Scintillator Tileboard G7L"
+"Scint Tileboard G7C","TB-G7F","Scintillator Tileboard G7C"
+"Scint Tileboard G7R","TB-G7R","Scintillator Tileboard G7R"
+"Scint Tileboard G8L","TB-G8L","Scintillator Tileboard G8L"
+"Scint Tileboard G8C","TB-G8F","Scintillator Tileboard G8C"
+"Scint Tileboard G8R","TB-G8R","Scintillator Tileboard G8R"
+"Scint Tileboard K11L","TB-K1L","Scintillator Tileboard K11L"
+"Scint Tileboard K11","TB-K1F","Scintillator Tileboard K11C"
+"Scint Tileboard K11R","TB-K1R","Scintillator Tileboard K11R"
+"Scint Tileboard K6L","TB-K6L","Scintillator Tileboard K6L"
+"Scint Tileboard K6C","TB-K6F","Scintillator Tileboard K6C"
+"Scint Tileboard K6R","TB-K6R","Scintillator Tileboard K6R"
+"Scint Tileboard K12L","TB-K2L","Scintillator Tileboard K12L"
+"Scint Tileboard K12C","TB-K2F","Scintillator Tileboard K12C"
+"Scint Tileboard K12R","TB-K2R","Scintillator Tileboard K12R"
+"Scint Tileboard K8L","TB-K8L","Scintillator Tileboard K8L"
+"Scint Tileboard K8C","TB-K8F","Scintillator Tileboard K8C"
+"Scint Tileboard K8R","TB-K8R","Scintillator Tileboard K8R"
+"9mm SiPM Reel","SP-R9","9mm SiPM"
+"4mm SiPM Reel","SP-R4","4mm SiPM"
+"HGC-LDO-HighBin","IC-LDH","HGC-LDO-HighBin"
+"HGC-LDO-LowBin","IC-LDL","HGC-LDO-LowBin"
+"GBTSCA-Stock","IC-SCS","GBTSCA-Stock"
+"lpGBT","IC-LPG","lpGBT"
+"lpGBT-Stock","IC-LPS","lpGBT-Stock"
+"Molded Tile BH Ring22","TI-22",
+"Molded Tile BH Ring24","TI-24",
+"Molded Tile BH Ring26","TI-26",
+"Molded Tile BH Ring28","TI-28",
+"Molded Tile BH Ring30","TI-30",
+"Molded Tile BH Ring32","TI-32",
+"Molded Tile BH Ring34","TI-34",
+"Molded Tile BH Ring36","TI-36",
+"Molded Tile BH Ring38","TI-38",
+"Molded Tile BH Ring40","TI-40",
+"Bare Molded Tile Special 4","BI-S4",
+"Bare Molded Tile Special 5","BI-S5",
+"Bare Molded Tile Special 6","BI-S6",
+"HAD 120um Si ProtoModule HD Right","PH-R1C","HAD 120um Si ProtoModule HD Type 4"
+"Mold Scint Tile Module D8","TM-D8FI","Mold Scintillator Tile Module D8"
+"Mold Scint Tile Module E8","TM-E8FI","Mold Scintillator Tile Module E8"
+"Rafael","IC-RAF","Rafael"
+"Mold Scint Tile Module G5","TM-G5FI","Mold Scint Tile Module G5"
+"200um Si Sensor HD Full","SH-2FXX","200um Sensor HD Type 0"
+"Mold Scint Tile Module G8L","TM-G8LI","Scintillator Tile Module G8L"
+"Mold Scint Tile Module G8","TM-G8FI","Mold Scint Tile Module G8"
+"Mold Scint Tile Module G8R","TM-G8RI","Scintillator Tile Module G8R"
+"200um Si Sensor HD Halfmoon-BL","SH-2MBL","200um Si Sensor HD Halfmoon-SW"
+"200um Si Sensor HD Halfmoon-BR","SH-2MBR","200um Si Sensor HD Halfmoon-SE"
+"200um Si Sensor HD Halfmoon-T","SH-2MTP","200um Si Sensor HD Halfmoon-N"
+"200um Si Sensor HD Halfmoon-TL","SH-2MTL","200um Si Sensor HD Halfmoon-NW"
+"200um Si Sensor HD Halfmoon-TR","SH-2MTR","200um Si Sensor HD Halfmoon-NE"
+"EM 200um Si Module HD Full","MH-F2W","EM 200um Si Module HD Type 0"
+"EM 200um Si ProtoModule HD Full","PH-F2W","EM 200um Si ProtoModule HD Type 0"
+"HAD 200um Si Module HD Full","MH-F2C","HAD 200um Si Module HD Type 0"
+"HAD 200um Si ProtoModule HD Full","PH-F2C","HAD 200um Si ProtoModule HD Type 0"
+"200um HD Si Sensor Wafer","SH-2SXX","200um Sensor HD Type 0 Wafer"
+"ECON-D","IC-ECD","ECON-D-Prod"
+"ECON-T","IC-ECT","ECON-T-Prod"
+"HGC-LDO","IC-LDO","HGC-LDO"
+"GBTSCA","IC-SCA","GBTSCA"
+"ALDOV2","IC-ALD","ALDOV2"
+"LinPOL12V","IC-LPL","LinPOL12V"
+"LD Engine East","EL-10E","Engine-LD-E-Prod"
+"LD Engine East PCB","EL-1BE","Engine-LD-E-Prod-PCB"
+"LD Engine West","EL-10W","Engine-LD-W-Prod"
+"LD Engine West PCB","EL-1BW","Engine-LD-W-Prod-PCB"
+"Conc Mezz Full D and T","CM-3F0T","Conc-Mezz-Full-D-T"
+"Conc Mezz Full D only","CM-3F0D","Conc-Mezz-Full-D"
+"Conc Mezz Full PCB","CM-3F0B","Conc-Mezz-Full-PCB"
+"Conc Mezz SemiLeft D and T","CM-3SLT","Conc-Mezz-SemiLeft-D-T"
+"Conc Mezz SemiLeft D only","CM-3SLD","Conc-Mezz-SemiLeft-D"
+"Conc Mezz SemiLeft PCB","CM-3SLB","Conc-Mezz-SemiLeft-PCB"
+"Conc Mezz SemiRight D and T","CM-3SRT","Conc-Mezz-SemiRight-D-T"
+"Conc Mezz SemiRight PCB","CM-3SRB","Conc-Mezz-SemiRight-PCB"
+"Conc Mezz HalfTop D and T","CM-3HTT","Conc-Mezz-HalfTop-D-T"
+"Conc Mezz HalfTop D only","CM-3HTD","Conc-Mezz-HalfTop-D"
+"Conc Mezz HalfTop PCB","CM-3HTB","Conc-Mezz-HalfTop-PCB"
+"Conc Mezz HalfBottom D and T","CM-3HBT","Conc-Mezz-HalfBottom-D-T"
+"Conc Mezz HalfBottom PCB","CM-3HBB","Conc-Mezz-HalfBottom-PCB"
+"Conc Mezz FiveRight D and T","CM-35RT","Conc-Mezz-FiveRight-D-T"
+"Conc Mezz FiveRight D only","CM-35RD","Conc-Mezz-FiveRight-D"
+"Conc Mezz FiveRight PCB","CM-35RB","Conc-Mezz-FiveRight-PCB"
+"EM 120um Si ProtoModule HD Full","PH-F1W","EM 120um Si ProtoModule HD Type 0"
+"EM 120um Si ProtoModule HD Top","PH-T1W","EM 120um Si ProtoModule HD Type 1"
+"EM 120um Si ProtoModule HD Bottom","PH-B1W","EM 120um Si ProtoModule HD Type 2"
+"EM 120um Si ProtoModule HD Left","PH-L1W","EM 120um Si ProtoModule HD Type 3"
+"EM 120um Si ProtoModule HD Right","PH-R1W","EM 120um Si ProtoModule HD Type 4"
+"EM 200um Si ProtoModule LD Full","PL-F2W","EM 200um Si ProtoModule LD Type 0"
+"EM 200um Si ProtoModule LD Top","PL-T2W","EM 200um Si ProtoModule LD Type 1"
+"EM 200um Si ProtoModule LD Bottom","PL-B2W","EM 200um Si ProtoModule LD Type 2"
+"EM 200um Si ProtoModule LD Left","PL-L2W","EM 200um Si ProtoModule LD Type 3"
+"EM 200um Si ProtoModule LD Right","PL-R2W","EM 200um Si ProtoModule LD Type 4"
+"EM 200um Si ProtoModule LD Five","PL-52W","EM 200um Si ProtoModule LD Type 5"
+"EM 300um Si ProtoModule LD Top","PL-T3W","EM 300um Si ProtoModule LD Type 1"
+"EM 300um Si ProtoModule LD Bottom","PL-B3W","EM 300um Si ProtoModule LD Type 2"
+"EM 300um Si ProtoModule LD Left","PL-L3W","EM 300um Si ProtoModule LD Type 3"
+"EM 300um Si ProtoModule LD Right","PL-R3W","EM 300um Si ProtoModule LD Type 4"
+"EM 120um Si Module HD Full","MH-F1W","EM 120um Si Module HD Type 0"
+"EM 120um Si Module HD Top","MH-T1W","EM 120um Si Module HD Type 1"
+"EM 120um Si Module HD Bottom","MH-B1W","EM 120um Si Module HD Type 2"
+"EM 120um Si Module HD Left","MH-L1W","EM 120um Si Module HD Type 3"
+"EM 200um Si Module LD Full","ML-F2W","EM 200um Si Module LD Type 0"
+"EM 200um Si Module LD Top","ML-T2W","EM 200um Si Module LD Type 1"
+"EM 200um Si Module LD Bottom","ML-B2W","EM 200um Si Module LD Type 2"
+"EM 200um Si Module LD Right","ML-R2W","EM 200um Si Module LD Type 4"
+"EM 200um Si Module LD Five","ML-52W","EM 200um Si Module LD Type 5"
+"EM 300um Si Module LD Full","ML-F3W","EM 300um Si Module LD Type 0"
+"EM 300um Si Module LD Bottom","ML-B3W","EM 300um Si Module LD Type 2"
+"EM 300um Si Module LD Left","ML-L3W","EM 300um Si Module LD Type 3"
+"EM 300um Si Module LD Right","ML-R3W","EM 300um Si Module LD Type 4"
+"EM 300um Si Module LD Five","ML-53W","EM 300um Si Module LD Type 5"
+"HAD 120um Si ProtoModule HD Top","PH-T1C","HAD 120um Si ProtoModule HD Type 1"
+"HAD 120um Si ProtoModule HD Bottom","PH-B1C","HAD 120um Si ProtoModule HD Type 2"
+"HAD 120um Si ProtoModule HD Left","PH-L1C","HAD 120um Si ProtoModule HD Type 3"
+"HAD 200um Si ProtoModule LD Full","PL-F2C","HAD 200um Si ProtoModule LD Type 0"
+"HAD 200um Si ProtoModule LD Bottom","PL-B2C","HAD 200um Si ProtoModule LD Type 2"
+"HAD 200um Si ProtoModule LD Left","PL-L2C","HAD 200um Si ProtoModule LD Type 3"
+"HAD 200um Si ProtoModule LD Right","PL-R2C","HAD 200um Si ProtoModule LD Type 4"
+"HAD 200um Si ProtoModule LD Five","PL-52C","HAD 200um Si ProtoModule LD Type 5"
+"HAD 300um Si ProtoModule LD Full","PL-F3C","HAD 300um Si ProtoModule LD Type 0"
+"Conc Mezz FiveLeft D and T","CM-35LT","Conc-Mezz-FiveLeft-D-T"
+"Conc Mezz FiveLeft D only","CM-35LD","Conc-Mezz-FiveLeft-D"
+"Conc Mezz FiveLeft PCB","CM-35LB","Conc-Mezz-FiveLeft-PCB"
+"LD Wagon West 3F TopoB Geom 2 - Dolphin","WW-30B2","LD Wagon West 3F TopoB Geom 2 - Dolphin"
+"LD Wagon West 3F TopoB Geom 1 - Starfish","WW-30B1","LD Wagon West 3F TopoB Geom 1 - Starfish"
+"LD Wagon West 3F TopoA Geom 2 - Crab","WW-30A2","LD Wagon West 3F TopoA Geom 2 - Crab"
+"LD Wagon West 3F TopoA Geom 1 - Turtle","WW-30A1","LD Wagon West 3F TopoA Geom 1 - Turtle"
+"LD Wagon West 2F1P TopoE Geom 3 - Car","WW-21E3","LD Wagon West 2F1P TopoE Geom 3 - Car"
+"LD Wagon West 2F1P TopoE Geom 2 - Rocket","WW-21E2","LD Wagon West 2F1P TopoE Geom 2 - Rocket"
+"LD Wagon West 2F1P TopoE Geom 1 - Scooter","WW-21E1","LD Wagon West 2F1P TopoE Geom 1 - Scooter"
+"LD Wagon West 2F1P TopoD Geom 1 - Steamboat","WW-21D1","LD Wagon West 2F1P TopoD Geom 1 - Steamboat"
+"LD Wagon West 2F1P TopoC Geom 1 - Roller skates","WW-21C1","LD Wagon West 2F1P TopoC Geom 1 - Roller skates"
+"LD Wagon West 2F1P TopoB Geom 1 - Airplane","WW-21B1","LD Wagon West 2F1P TopoB Geom 1 - Airplane"
+"LD Wagon West 2F1P TopoA Geom 1 - Bicycle","WW-21A1","LD Wagon West 2F1P TopoA Geom 1 - Bicycle"
+"LD Wagon West 2F TopoD Geom1 - Cow","WW-20D1","LD Wagon West 2F TopoD Geom1 - Cow"
+"LD Wagon West 2F TopoC Geom1 - Rabbit","WW-20C1","LD Wagon West 2F TopoC Geom1 - Rabbit"
+"LD Wagon West 2F TopoB Geom1 - Lion","WW-20B1","LD Wagon West 2F TopoB Geom1 - Lion"
+"LD Wagon West 2F TopoA Geom1 - Bird","WW-20A1","LD Wagon West 2F TopoA Geom1 - Bird"
+"LD Wagon West 1F2P TopoC Geom1 - Comet","WW-12C1","LD Wagon West 1F2P TopoC Geom1 - Comet"
+"LD Wagon West 1F2P TopoA Geom1 - Saturn","WW-12A1","LD Wagon West 1F2P TopoA Geom1 - Saturn"
+"LD Wagon West 1F1P TopoA Geom1 - Paper clip","WW-11A1","LD Wagon West 1F1P TopoA Geom1 - Paper clip"
+"LD Wagon West 1F TopoA Geom1 - Mushroom","WW-10A1","LD Wagon West 1F TopoA Geom1 - Mushroom"
+"LD Wagon East 3F Topo A Geom3 - Octopus","WE-30A3","LD Wagon East 3F Topo A Geom3 - Octopus"
+"LD Wagon East 3F Topo A Geom2 - Scallop","WE-30A2","LD Wagon East 3F Topo A Geom2 - Scallop"
+"LD Wagon East 3F TopoA Geom1 - Seahorse","WE-30A1","LD Wagon East 3F TopoA Geom1 - Seahorse"
+"LD Wagon East 2F1P Topo D Geom1 - UFO","WE-21D1","LD Wagon East 2F1P Topo D Geom1 - UFO"
+"LD Wagon East 2F1P Topo C Geom6 - Submarine","WE-21C6","LD Wagon East 2F1P Topo C Geom6 - Submarine"
+"LD Wagon East 2F1P Topo C Geom4 - Semi truck","WE-21C4","LD Wagon East 2F1P Topo C Geom4 - Semi truck"
+"LD Wagon East 2F1P Topo C Geom3 - Cargo ship","WE-21C3","LD Wagon East 2F1P Topo C Geom3 - Cargo ship"
+"LD Wagon East 2F1P Topo C Geom1 - Helicopter","WE-21C1","LD Wagon East 2F1P Topo C Geom1 - Helicopter"
+"LD Wagon East 2F1P Topo B Geom1 - Sailboat","WE-21B1","LD Wagon East 2F1P Topo B Geom1 - Sailboat"
+"LD Wagon East 2F1P Topo A Geom1 - Hot air balloon","WE-21A1","LD Wagon East 2F1P Topo A Geom1 - Hot air balloon"
+"LD Wagon East 2F Topo E Geom1 - Turkey","WE-20E1","LD Wagon East 2F Topo E Geom1 - Turkey"
+"LD Wagon East 2F Topo B Geom1 - Elephant","WE-20B1","LD Wagon East 2F Topo B Geom1 - Elephant"
+"LD Wagon East 2F Topo A Geom1 - Zebra","WE-20A1","LD Wagon East 2F Topo A Geom1 - Zebra"
+"LD Wagon East 1F2P Topo A Geom1 - Moon","WE-12A1","LD Wagon East 1F2P Topo A Geom1 - Moon"
+"LD Wagon East 1F1P Topo C Geom1 - Pencil","WE-11C1","LD Wagon East 1F1P Topo C Geom1 - Pencil"
+"LD Wagon East 1F1P Topo B Geom2 - Envelope","WE-11B2","LD Wagon East 1F1P Topo B Geom2 - Envelope"
+"LD Wagon East 1F1P Topo A Geom1 - Scissors","WE-11A1","LD Wagon East 1F1P Topo A Geom1 - Scissors"
+"LD Wagon East 1F TopoB Geom1 - Flower","WE-10B1","LD Wagon East 1F TopoB Geom1 - Flower"
+"PCB LD Three",,"PCB LD Type 7"
+"PCB HD Five",,"PCB HD Type 5"
+"PCB baseplate with Kapton overlay V3",,
+"PCB baseplate with Kapton overlay V2",,
+"PCB baseplate with Kapton overlay V1",,
+"HGC Choptwo(-) Sensor",,
+"HGC Three Sensor",,
+"HGC Five Sensor",,
+"HGC Half Sensor",,
+"HGC HD Hex PCB",,
+"HAD 300um Si ProtoModule LD Bottom","PL-B3C","HAD 300um Si ProtoModule LD Type 2"
+"HAD 300um Si ProtoModule LD Left","PL-L3C","HAD 300um Si ProtoModule LD Type 3"
+"HAD 300um Si ProtoModule LD Right","PL-R3C","HAD 300um Si ProtoModule LD Type 4"
+"HAD 120um Si Module HD Full","MH-F1C","HAD 120um Si Module HD Type 0"
+"HAD 120um Si Module HD Top","MH-T1C","HAD 120um Si Module HD Type 1"
+"HAD 120um Si Module HD Bottom","MH-B1C","HAD 120um Si Module HD Type 2"
+"HAD 120um Si Module HD Left","MH-L1C","HAD 120um Si Module HD Type 3"
+"HAD 200um Si Module LD Full","ML-F2C","HAD 200um Si Module LD Type 0"
+"HAD 200um Si Module LD Top","ML-T2C","HAD 200um Si Module LD Type 1"
+"HAD 200um Si Module LD Bottom","ML-B2C","HAD 200um Si Module LD Type 2"
+"HAD 200um Si Module LD Left","ML-L2C","HAD 200um Si Module LD Type 3"
+"HAD 200um Si Module LD Five","ML-52C","HAD 200um Si Module LD Type 5"
+"HAD 300um Si Module LD Full","ML-F3C","HAD 300um Si Module LD Type 0"
+"HAD 300um Si Module LD Top","ML-T3C","HAD 300um Si Module LD Type 1"
+"HAD 300um Si Module LD Left","ML-L3C","HAD 300um Si Module LD Type 3"
+"HAD 300um Si Module LD Right","ML-R3C","HAD 300um Si Module LD Type 4"
+"HAD 300um Si Module LD Five","ML-53C","HAD 300um Si Module LD Type 5"
+"HGC LD Hex PCB",,
+"HGC Halfmoon",,
+"HGC Sensor",,
+"HGC Sensor Wafer",,
+"HGC Six Inch Silicon Proto Module",,
+"HPK Eight Inch 271 Sensor Monitor Diode",,
+"200 um Si Sensor HD Right","SH-2RXX","200 um Si Sensor HD Right"
+"200 um Si Sensor HD Left","SH-2LXX","200 um Si Sensor HD Left"
+"200 um Si Sensor HD Bottom","SH-2BXX","200 um Si Sensor HD Bottom"
+"HPK Eight Inch 271 Sensor Guard Ring",,
+"HPK Eight Inch 271 Sensor Calib Cell",,
+"HPK Eight Inch 271 Sensor Cell",,
+"HPK Six Inch 128 Sensor Calib Cell",,
+"HPK Six Inch 128 Sensor Cell",,
+"HPK Eight Inch 271 Cell Silicon Sensor",,
+"HGC Six Inch Silicon Module",,
+"HPK Six Inch 128 Cell Silicon Sensor",,
+"200um Si Sensor HD Halfmoon-B","SH-2MBT","200um Si Sensor HD Halfmoon-S"
+"LD Wagon East 1F TopoA Geom1 - Leaf","WE-10A1","LD Wagon East 1F TopoA Geom1 - Leaf"
+"Bare Hexaboard HD Full","07-01","Bare Hexaboard HD Full"
+"Bare Hexaboard HD Top","07-11","Bare Hexaboard HD Top"
+"Bare Hexaboard HD Bottom","07-21","Bare Hexaboard HD Bottom"
+"Bare Hexaboard HD Left","07-31","Bare Hexaboard HD Left"
+"Bare Hexaboard HD Right","07-41","Bare Hexaboard HD Right"
+"Bare Hexaboard LD Full","06-01","Bare Hexaboard LD Full"
+"Bare Hexaboard LD Top","06-11","Bare Hexaboard LD Top"
+"Bare Hexaboard LD Bottom","06-21","Bare Hexaboard LD Bottom"
+"Bare Hexaboard LD Left","06-31","Bare Hexaboard LD Left"
+"Bare Hexaboard LD Right","06-41","Bare Hexaboard LD Right"
+"Bare Hexaboard LD Five","06-51","Bare Hexaboard LD Five"
+"TOR209 bPOL12V Coil","DC-COL","TOR209 bPOL12V Coil"
+"HD HGCROC",,"HD HGCROC"
+"LD HGCROC",,"LD HGCROC"
+"SiPM HGCROC",,"SiPM HGCROC"
+"Conc Mezz SemiRight D only","CM-3SRD","Conc-Mezz-SemiRight-D"
+"Conc Mezz HalfBottom D only","CM-3HBD","Conc-Mezz-HalfBottom-D"
+"EM 300um Si ProtoModule LD Full","PL-F3W","EM 300um Si ProtoModule LD Type 0"
+"EM 300um Si ProtoModule LD Five","PL-53W","EM 300um Si ProtoModule LD Type 5"
+"EM 120um Si Module HD Right","MH-R1W","EM 120um Si Module HD Type 4"
+"EM 200um Si Module LD Left","ML-L2W","EM 200um Si Module LD Type 3"
+"EM 300um Si Module LD Top","ML-T3W","EM 300um Si Module LD Type 1"
+"HAD 120um Si ProtoModule HD Full","PH-F1C","HAD 120um Si ProtoModule HD Type 0"
+"HAD 200um Si ProtoModule LD Top","PL-T2C","HAD 200um Si ProtoModule LD Type 1"
+"HAD 300um Si ProtoModule LD Top","PL-T3C","HAD 300um Si ProtoModule LD Type 1"
+"HAD 300um Si ProtoModule LD Five","PL-53C","HAD 300um Si ProtoModule LD Type 5"
+"HAD 120um Si Module HD Right","MH-R1C","HAD 120um Si Module HD Type 4"
+"HAD 200um Si Module LD Right","ML-R2C","HAD 200um Si Module LD Type 4"
+"HAD 300um Si Module LD Bottom","ML-B3C","HAD 300um Si Module LD Type 2"
+"Scintillator Flex Cable BH","SC-FBH","Scintillator Flex Cable BH"
+"Scintillator Flex Cable FH","SC-FFH","Scintillator Flex Cable FH"
+"Scintillator Twinax Cable A","SC-TXA","Scintillator Twinax Cable A"
+"Scintillator Twinax Cable C","SC-TXC","Scintillator Twinax Cable C"
+"Scintillator Twinax Cable D","SC-TXD","Scintillator Twinax Cable D"
+"Scintillator Twinax Cable B","SC-TXB","Scintillator Twinax Cable B"
+"Hexaboard HD Full","XH-F4","Hexaboard HD Full"
+"Hexaboard HD Top","XH-T4","Hexaboard HD Top"
+"Hexaboard HD Bottom","XH-B4","Hexaboard HD Bottom"
+"Hexaboard HD Left","XH-L4","Hexaboard HD Left"
+"Hexaboard HD Right","XH-R4","Hexaboard HD Right"
+"Hexaboard LD Full","XL-F4","Hexaboard LD Full"
+"Hexaboard LD Top","XL-T4","Hexaboard LD Top"
+"Hexaboard LD Bottom","XL-B4","Hexaboard LD Bottom"
+"Hexaboard LD Left","XL-L4","Hexaboard LD Left"
+"Hexaboard LD Right","XL-R4","Hexaboard LD Right"
+"Hexaboard LD Five","XL-54","Hexaboard LD Five"
+"Bare Molded Tile BH Ring18","BI-18",
+"Bare Molded Tile BH Ring20","BI-20",
+"Bare Molded Tile BH Ring22","BI-22",
+"Bare Molded Tile BH Ring24","BI-24",
+"Bare Molded Tile BH Ring26","BI-26",
+"Bare Molded Tile BH Ring28","BI-28",
+"Bare Molded Tile BH Ring30","BI-30",
+"Bare Molded Tile BH Ring32","BI-32",
+"Bare Molded Tile BH Ring34","BI-34",
+"Bare Molded Tile BH Ring36","BI-36",
+"Bare Molded Tile BH Ring38","BI-38",
+"Bare Molded Tile BH Ring40","BI-40",

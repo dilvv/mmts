@@ -1,0 +1,275 @@
+### used for run.pedestal.sh and run.IVscan.sh
+PCKeyLoc:  '/home/theUSER/.ssh/HGCtrler_key_kria' ### all kria should use the same private key
+1L: ### to be deleted but it requires makefile_task1 modification (pedestal run
+  IP:
+  type: Kria
+  pullerPORT: 6002
+  HVchannel: 1 ### used for IV scan channel
+1C:
+  IP:
+  type: Kria
+  pullerPORT: 6003
+  HVchannel: 2
+1R:
+  IP: 
+  type: Kria
+  pullerPORT: 6004
+  HVchannel: 3
+2L:
+  IP: 
+  type: Trenz
+  pullerPORT: 6005
+  HVchannel: 4
+2C:
+  IP: 
+  type: Kria
+  pullerPORT: 6006
+  HVchannel: 5
+2R:
+  IP: 
+  type: Kria
+  pullerPORT: 6007
+  HVchannel: 6
+3L:
+  IP:
+  type: Kria
+  pullerPORT: 6008
+  HVchannel: 7 ### used for IV scan channel
+3C:
+  IP:
+  type: Kria
+  pullerPORT: 6009
+  HVchannel: 8
+3R:
+  IP: 
+  type: Kria
+  pullerPORT: 6010
+  HVchannel: 9
+4L:
+  IP: 
+  type: Trenz
+  pullerPORT: 6011
+  HVchannel: 10
+4C:
+  IP: 
+  type: Kria
+  pullerPORT: 6012
+  HVchannel: 11
+4R:
+  IP: 
+  type: Kria
+  pullerPORT: 6013
+  HVchannel: 12
+5L:
+  IP:
+  type: Kria
+  pullerPORT: 6014
+  HVchannel: 13 ### used for IV scan channel
+5C:
+  IP:
+  type: Kria
+  pullerPORT: 6015
+  HVchannel: 14
+5R:
+  IP: 
+  type: Kria
+  pullerPORT: 6016
+  HVchannel: 15
+6L:
+  IP: 
+  type: Trenz
+  pullerPORT: 6017
+  HVchannel: 16
+6C:
+  IP: 
+  type: Kria
+  pullerPORT: 6018
+  HVchannel: 17
+6R:
+  IP: 
+  type: Kria
+  pullerPORT: 6019
+  HVchannel: 18
+7L:
+  IP:
+  type: Kria
+  pullerPORT: 6020
+  HVchannel: 19 ### used for IV scan channel
+7C:
+  IP:
+  type: Kria
+  pullerPORT: 6021
+  HVchannel: 20
+7R:
+  IP: 
+  type: Kria
+  pullerPORT: 6022
+  HVchannel: 21
+8L:
+  IP: 
+  type: Trenz
+  pullerPORT: 6023
+  HVchannel: 22
+8C:
+  IP: 
+  type: Kria
+  pullerPORT: 6024
+  HVchannel: 23
+8R:
+  IP: 
+  type: Kria
+  pullerPORT: 6025
+  HVchannel: 24
+
+MMTS_channel_config:
+  1L:
+    IP:
+    type: Kria
+    pullerPORT: 6002 ### pullerPORT is the daq-client -p $pullerPORT
+    HVchannel: 1 ### used for IV scan channel
+  1C:
+    IP:
+    type: Kria
+    pullerPORT: 6003
+    HVchannel: 2
+  1R:
+    IP: 
+    type: Kria
+    pullerPORT: 6004
+    HVchannel: 3
+  2L:
+    IP: 
+    type: Trenz
+    pullerPORT: 6005
+    HVchannel: 4
+  2C:
+    IP: 
+    type: Kria
+    pullerPORT: 6006
+    HVchannel: 5
+  2R:
+    IP: 
+    type: Kria
+    pullerPORT: 6007
+    HVchannel: 6
+  3L:
+    IP:
+    type: Kria
+    pullerPORT: 6008
+    HVchannel: 7 ### used for IV scan channel
+  3C:
+    IP:
+    type: Kria
+    pullerPORT: 6009
+    HVchannel: 8
+  3R:
+    IP: 
+    type: Kria
+    pullerPORT: 6010
+    HVchannel: 9
+  4L:
+    IP: 
+    type: Trenz
+    pullerPORT: 6011
+    HVchannel: 10
+  4C:
+    IP: 
+    type: Kria
+    pullerPORT: 6012
+    HVchannel: 11
+  4R:
+    IP: 
+    type: Kria
+    pullerPORT: 6013
+    HVchannel: 12
+  5L:
+    IP:
+    type: Kria
+    pullerPORT: 6014
+    HVchannel: 13 ### used for IV scan channel
+  5C:
+    IP:
+    type: Kria
+    pullerPORT: 6015
+    HVchannel: 14
+  5R:
+    IP: 
+    type: Kria
+    pullerPORT: 6016
+    HVchannel: 15
+  6L:
+    IP: 
+    type: Trenz
+    pullerPORT: 6017
+    HVchannel: 16
+  6C:
+    IP: 
+    type: Kria
+    pullerPORT: 6018
+    HVchannel: 17
+  6R:
+    IP: 
+    type: Kria
+    pullerPORT: 6019
+    HVchannel: 18
+  7L:
+    IP:
+    type: Kria
+    pullerPORT: 6020
+    HVchannel: 19 ### used for IV scan channel
+  7C:
+    IP:
+    type: Kria
+    pullerPORT: 6021
+    HVchannel: 20
+  7R:
+    IP: 
+    type: Kria
+    pullerPORT: 6022
+    HVchannel: 21
+  8L:
+    IP: 
+    type: Trenz
+    pullerPORT: 6023
+    HVchannel: 22
+  8C:
+    IP: 
+    type: Kria
+    pullerPORT: 6024
+    HVchannel: 23
+  8R:
+    IP: 
+    type: Kria
+    pullerPORT: 6025
+    HVchannel: 24
+### pullerPORT should be integer between 6002~6020 and they are related to `systemctl --user status daq-client-port6002.service`. Please not to use 6001 because daq-client.services uses it
+### pullerPORT should be unique number, please don't share the value.
+### type: Kria and Trenz
+### 1L 1C 1R means row 1 column Left, Center, Right
+
+### used for run.IVscan.sh
+RS232:
+  switch_vitek: 'ASRL/dev/ttyUSB1::INSTR'
+  HV_keithley: 'ASRL/dev/ttyUSB0::INSTR'
+
+## configs in run.IVscan.sh
+DataLoc: /home/mmts/MultiModuleTeststandUI/tmp_files
+
+DBDatabase: 'plc_db'
+DBHostname: '127.0.0.1'
+DBPassword: 'IHEPhgcal'
+DBUsername: 'plc_user'
+
+Inspectors:
+  - IHEP
+
+
+### used for https://github.com/youyingli/HGCal_Module_Production_Toolkit/blob/main/scripts/make_iv_curve.py
+database_name: 'plc_db'
+user: 'postgres'
+password: ''
+host: '127.0.0.1'
+framework_path: '/home/mmts/MultiModuleTeststandUI/external_packages/HGCal_Module_Production_Toolkit'
+grafana_dashboard_url: "http://localhost:3000/public-dashboards/72ad1d5bce8540668dcc212776d62c42"
+
+

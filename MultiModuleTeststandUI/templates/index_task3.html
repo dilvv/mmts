@@ -1,0 +1,1217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>IV Scan</title>
+
+  <meta name="csrf_token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+
+</head>
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f4f6f8;
+  color: #1f2933;
+  min-width: 650px;
+}
+
+.page {
+  width: min(1400px, 96vw);
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.page-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.card {
+  margin-bottom: 20px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #d9e2ec;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.card h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+
+/* --------------------------------------------------
+   Control panel
+-------------------------------------------------- */
+
+.control-panel {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: center;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.batch-action-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.ctrlbtn,
+.small-btn {
+  min-width: 110px;
+  padding: 10px 16px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ctrlbtn.secondary {
+  border-color: #64748b;
+  background: #64748b;
+}
+
+.ctrlbtn.danger {
+  border-color: #dc2626;
+  background: #dc2626;
+}
+
+.ctrlbtn:hover:not(:disabled),
+.small-btn:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.ctrlbtn:disabled,
+.small-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.status-box {
+  display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.status-label {
+  font-weight: 700;
+  color: #475569;
+}
+
+#statusText {
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.batch-status-panel {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #111827;
+  color: #f3f4f6;
+}
+
+.batch-status-title {
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+#batchStatusText {
+  white-space: pre-line;
+  font-family: Consolas, monospace;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------
+   Environment controls
+-------------------------------------------------- */
+
+.env-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+/*
+  All four environment blocks use:
+  <fieldset class="env-control">
+    <legend>...</legend>
+    ...
+  </fieldset>
+*/
+fieldset.env-control {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #d9e2ec;
+  border-radius: 10px;
+  background: #f8fafc;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+fieldset.env-control:hover {
+  border-color: #94a3b8;
+  background: #ffffff;
+}
+
+fieldset.env-control:focus-within {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+fieldset.env-control legend {
+  max-width: calc(100% - 12px);
+  padding: 0 6px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+/* Text inputs and dropdown */
+.env-control input[type="text"],
+.env-control input[type="number"],
+.env-control select {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  margin-top: auto;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.env-control select {
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+.env-control input[type="text"]:focus,
+.env-control input[type="number"]:focus,
+.env-control select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* Voltage block */
+.voltage-field {
+  min-width: 0;
+}
+
+.voltage-options {
+  display: flex;
+  flex: 0 0 42px;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.voltage-option {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.voltage-option:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.voltage-option:has(input:checked) {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.voltage-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0 7px 0 0;
+  accent-color: #2563eb;
+}
+
+/* Disabled environment controls */
+.env-control input:disabled,
+.env-control select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: #e2e8f0;
+}
+
+.voltage-option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* --------------------------------------------------
+   Module ID controls
+-------------------------------------------------- */
+
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.module-cell {
+  display: grid;
+  grid-template-columns: 18px 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.module-cell input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.module-cell input:focus {
+  outline: 2px solid #93c5fd;
+  border-color: #2563eb;
+}
+
+.module-cell input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: #e2e8f0;
+}
+
+.status-led {
+  width: 14px;
+  height: 14px;
+  min-height: 14px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.labelModuleID {
+  font-weight: 700;
+}
+
+/* --------------------------------------------------
+   DAQ controls
+-------------------------------------------------- */
+
+.daq-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+#daqNewOpt {
+  margin-right: auto;
+  font-family: monospace;
+  color: #475569;
+}
+
+#daqSelect {
+  width: 100%;
+  max-width: 360px;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+#daqSelect:focus {
+  outline: 2px solid #93c5fd;
+  border-color: #2563eb;
+}
+
+.small-btn {
+  min-width: auto;
+  padding: 8px 12px;
+}
+
+/* --------------------------------------------------
+   Grafana / iframe
+-------------------------------------------------- */
+
+.grafana-frame {
+  width: 100%;
+  height: 650px;
+  border: none;
+  border-radius: 8px;
+  background: #000000;
+}
+
+/* --------------------------------------------------
+   Responsive layout
+-------------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .env-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .control-panel,
+  .module-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .button-row,
+  .batch-action-row,
+  .status-box,
+  .batch-status-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .daq-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #daqNewOpt {
+    margin-right: 0;
+  }
+
+  #daqSelect {
+    max-width: none;
+  }
+}
+
+@media (max-width: 650px) {
+  .page {
+    width: min(100% - 24px, 1400px);
+    padding: 12px 0;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .env-grid {
+    grid-template-columns: 1fr;
+  }
+
+  fieldset.env-control {
+    min-height: auto;
+  }
+
+  .voltage-options {
+    flex-basis: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .voltage-options {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .voltage-option {
+    flex: none;
+    width: 100%;
+  }
+
+  .module-cell {
+    grid-template-columns: 18px 36px minmax(0, 1fr);
+    padding: 10px;
+  }
+}
+</style>
+
+<body>
+  <main class="page">
+    <header class="page-header">
+      <h1>IV Scanning</h1>
+    </header>
+
+    <section class="card">
+      <div class="control-panel">
+        <div class="button-row">
+          <button type="button" id="initBtn" class="ctrlbtn" onclick="initJob()">Initialize</button>
+          <button type="button" id="confBtn" class="ctrlbtn" disabled>Configure</button>
+          <button type="button" id="execBtn" class="ctrlbtn" onclick="execJob()" disabled>Run</button>
+          <button type="button" id="stopBtn" class="ctrlbtn danger" onclick="stopJob()" disabled>Stop</button>
+          <button type="button" id="exitBtn" class="ctrlbtn secondary" onclick="exitJob()" disabled>Destroy</button>
+        </div>
+        <div class="batch-action-row">
+          <button type="button" id="autoTestBtn" class="ctrlbtn" onclick="autoTestJob()" disabled>AutoTest</button>
+          <button type="button" id="iv3TestBtn" class="ctrlbtn" onclick="iv3TestJob()" disabled>IV3 Test</button>
+          <button type="button" id="clearModulesBtn" class="ctrlbtn secondary" onclick="clearModuleNumbers()" disabled>Clear Modules</button>
+        </div>
+
+        <div class="status-box">
+          <span class="status-label">Status</span>
+          <span id="statusText">Loading...</span>
+        </div>
+
+        <div class="batch-status-panel">
+          <div class="batch-status-title">Auto Batch Status</div>
+          <div id="batchStatusText">No auto batch status file yet.</div>
+        </div>
+      </div>
+    </section>
+
+    <form method="POST" id="pymodule_configurations" action="/task3/submit">
+      <section class="card">
+        <h2>Environment</h2>
+
+        <div class="env-grid">
+          <fieldset class="env-control">
+            <legend>Temperature</legend>
+
+            <input
+              type="text"
+              name="currentTEMPERATURE"
+              id="currentTEMPERATURE"
+              class="configuration-input"
+              value="{{ currentCONF.get('currentTEMPERATURE', '') | e }}"
+              placeholder="50"
+              required>
+          </fieldset>
+
+          <fieldset class="env-control">
+            <legend>Humidity</legend>
+
+            <input
+              type="text"
+              name="currentHUMIDITY"
+              id="currentHUMIDITY"
+              class="configuration-input"
+              value="{{ currentCONF.get('currentHUMIDITY', '') | e }}"
+              placeholder="50"
+              required>
+          </fieldset>
+
+          <fieldset class="env-control voltage-field">
+            <legend>Maximum voltage</legend>
+
+            <div class="voltage-options">
+
+              <label class="voltage-option">
+                <input
+                  type="radio"
+                  name="maxVOLTAGE"
+                  value="500"
+                  class="configuration-input"
+                  {% if currentCONF.get('maxVOLTAGE') | string == '500' %}
+                  checked
+                  {% endif %}
+                  required>
+                500 V
+              </label>
+
+              <label class="voltage-option">
+                <input
+                  type="radio"
+                  name="maxVOLTAGE"
+                  value="850"
+                  class="configuration-input"
+                  {% if currentCONF.get('maxVOLTAGE') | string == '850' %}
+                  checked
+                  {% endif %}>
+                850 V
+              </label>
+
+            </div>
+          </fieldset>
+
+          <fieldset class="env-control">
+            <legend>Thermal-cycle iteration</legend>
+
+            {% set selected_iteration = currentCONF.get('iteration', '') %}
+
+            <select
+              name="iteration"
+              id="iteration"
+              class="configuration-input"
+              required>
+
+              <option value="" disabled {% if not selected_iteration %}selected{% endif %}>
+                Select an iteration
+              </option>
+
+              {% for iteration, iteration_desc in thermalCYCLE_iterationDICT.items() %}
+              <option
+                value="{{ iteration | e }}"
+                {% if iteration == selected_iteration %}selected{% endif %}>
+                {{ iteration_desc }}
+              </option>
+              {% endfor %}
+
+            </select>
+          </fieldset>
+
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Module IDs</h2>
+
+        <div class="module-grid">
+          {% for row in range(1, 9) %}
+            {% for pos in ["L", "C", "R"] %}
+              {% set module_key = 'moduleID' ~ row ~ pos %}
+              <div class="module-cell">
+                <button
+                  type="button"
+                  class="statusModuleID status-led"
+                  id="LED{{ row }}{{ pos }}"
+                  aria-label="Status {{ row }}{{ pos }}">
+                </button>
+
+                <label class="labelModuleID" for="{{ module_key }}">
+                  {{ row }}{{ pos }}
+                </label>
+
+                <input
+                  type="text"
+                  placeholder="Module ID"
+                  name="{{ module_key }}"
+                  id="{{ module_key }}"
+                  class="inputModuleID"
+                  value="{{ currentCONF.get(module_key, '') | e }}">
+              </div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      </section>
+    </form>
+
+
+    <section class="card">
+      <h2>Live IV Curves</h2>
+
+      <iframe
+          src="{{IVCurveOnline_URL}}"
+          style="width:100%; height:{{IVCurveOnline_height}}; border:none">
+      </iframe>
+    </section>
+  </main>
+
+  <script>
+let statusPollInFlight = false;
+const moduleDraftKey = "task3ModuleIdDraft";
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function moduleInputs() {
+  return document.querySelectorAll(
+    '#pymodule_configurations input[name^="moduleID"]'
+  );
+}
+
+function saveModuleDraft() {
+  const draft = {};
+  moduleInputs().forEach((input) => {
+    draft[input.name] = input.value;
+  });
+  localStorage.setItem(moduleDraftKey, JSON.stringify(draft));
+}
+
+function restoreModuleDraft() {
+  const rawDraft = localStorage.getItem(moduleDraftKey);
+  if (!rawDraft) return;
+  try {
+    const draft = JSON.parse(rawDraft);
+    moduleInputs().forEach((input) => {
+      if (Object.prototype.hasOwnProperty.call(draft, input.name)) {
+        input.value = draft[input.name];
+      }
+    });
+  } catch (error) {
+    console.warn("Module draft restore failed:", error);
+  }
+}
+
+function clearModuleDraft() {
+  localStorage.removeItem(moduleDraftKey);
+}
+
+const STATUS_RULES = {
+  startup: {
+    init: false,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: true,
+    inputs: false,
+  },
+  initializing: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  initialized: {
+    init: true,
+    conf: false,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  configured: {
+    init: true,
+    conf: false,
+    exec: false,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  running: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: false,
+    exit: false,
+    inputs: true,
+  },
+  idle: {
+    init: true,
+    conf: false,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  stopping: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  stopped: {
+    init: true,
+    conf: false,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  destroying: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: true,
+    inputs: false,
+  },
+  destroyed: {
+    init: false,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: true,
+    inputs: false,
+  },
+  error: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+};
+
+function getCsrfToken() {
+  const token = document.querySelector('meta[name="csrf_token"]');
+  return token ? token.getAttribute("content") : "";
+}
+
+function getElements() {
+  return {
+    initBtn: document.getElementById("initBtn"),
+    confBtn: document.getElementById("confBtn"),
+    execBtn: document.getElementById("execBtn"),
+    stopBtn: document.getElementById("stopBtn"),
+    exitBtn: document.getElementById("exitBtn"),
+    statusText: document.getElementById("statusText"),
+    autoTestBtn: document.getElementById("autoTestBtn"),
+    iv3TestBtn: document.getElementById("iv3TestBtn"),
+    clearModulesBtn: document.getElementById("clearModulesBtn"),
+    inputs: document.querySelectorAll("#pymodule_configurations input.inputModuleID"),
+  };
+}
+
+function applyButtonState(rule, status) {
+  const elements = getElements();
+
+  elements.initBtn.disabled = rule.init;
+  elements.confBtn.disabled = rule.conf;
+  elements.execBtn.disabled = rule.exec;
+  elements.stopBtn.disabled = rule.stop;
+  elements.exitBtn.disabled = rule.exit;
+
+  const batchReady = ["startup", "initialized", "configured", "idle", "stopped", "destroyed"].includes(status);
+  const clearReady = batchReady || status === "error";
+  elements.autoTestBtn.disabled = !batchReady;
+  elements.iv3TestBtn.disabled = !batchReady;
+  elements.clearModulesBtn.disabled = !clearReady;
+
+  elements.inputs.forEach((input) => {
+    input.disabled = rule.inputs;
+  });
+}
+
+function disableAllForOtherTask() {
+  const elements = getElements();
+
+  elements.initBtn.disabled = true;
+  elements.confBtn.disabled = true;
+  elements.execBtn.disabled = true;
+  elements.stopBtn.disabled = true;
+  elements.exitBtn.disabled = true;
+  elements.autoTestBtn.disabled = true;
+  elements.iv3TestBtn.disabled = true;
+  elements.clearModulesBtn.disabled = true;
+
+  elements.inputs.forEach((input) => {
+    input.disabled = true;
+  });
+
+  elements.statusText.innerText = "server is running other task";
+}
+
+function updateDaqOptions(daqResults) {
+  const daqSelect = document.getElementById("daqSelect");
+  const daqNewOpt = document.getElementById("daqNewOpt");
+
+  if (!daqSelect || !Array.isArray(daqResults)) return;
+  if (daqSelect.options.length >= 100) return;
+
+  daqResults.forEach((value) => {
+    const exists = Array.from(daqSelect.options).some((opt) => opt.value === value);
+
+    if (!exists) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      daqSelect.appendChild(option);
+
+      if (daqNewOpt) {
+        daqNewOpt.innerText = value;
+      }
+    }
+  });
+}
+
+function updateBatchStatus(batchStatus = {}) {
+  const lines = [];
+  if (batchStatus.batch) lines.push(`batch: ${batchStatus.batch}`);
+  if (batchStatus.status) lines.push(`status: ${batchStatus.status}`);
+  if (batchStatus.phase) lines.push(`phase: ${batchStatus.phase}`);
+  if (batchStatus.phase_state) lines.push(`phase state: ${batchStatus.phase_state}`);
+  if (batchStatus.phase_summary) lines.push(batchStatus.phase_summary);
+  if (batchStatus.plc?.plc_status_text) lines.push(`PLC: ${batchStatus.plc.plc_status_text}`);
+  if (batchStatus.plc?.dewpoint_1_C !== undefined) lines.push(`dewpoint 1: ${batchStatus.plc.dewpoint_1_C} C`);
+  if (batchStatus.plc?.dewpoint_2_C !== undefined) lines.push(`dewpoint 2: ${batchStatus.plc.dewpoint_2_C} C`);
+  if (batchStatus.error_message) lines.push(`error: ${batchStatus.error_message}`);
+  if (batchStatus.updated_at) lines.push(`updated: ${batchStatus.updated_at}`);
+  document.getElementById("batchStatusText").innerText =
+    lines.length ? lines.join("\n") : "No auto batch status file yet.";
+}
+
+async function updateStatus() {
+  if (statusPollInFlight) return;
+  statusPollInFlight = true;
+  try {
+    const response = await fetchWithTimeout("/task3/status");
+    const data = await response.json();
+
+    if (
+      data.jobmode !== "" &&
+      data.jobmode !== "task3" &&
+      data.status !== "startup" &&
+      data.status !== "destroyed"
+    ) {
+      disableAllForOtherTask();
+      return;
+    }
+
+    document.getElementById("statusText").innerText = data.status;
+
+    const rule = STATUS_RULES[data.status];
+
+    if (rule) {
+      applyButtonState(rule, data.status);
+    }
+
+    updateBatchStatus(data.batchStatus);
+    updateDaqOptions(data.DAQres);
+  } catch (error) {
+    document.getElementById("statusText").innerText = "status fetch failed";
+    console.error(error);
+  } finally {
+    statusPollInFlight = false;
+  }
+}
+
+async function execjob(varname) {
+  await fetchWithTimeout(`/task3/${varname}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify({}),
+  });
+
+  updateStatus();
+}
+
+async function initJob() {
+  await execjob("init");
+
+  const daqSelect = document.getElementById("daqSelect");
+  const daqNewOpt = document.getElementById("daqNewOpt");
+
+  if (daqSelect) {
+    daqSelect.options.length = 1;
+  }
+
+  if (daqNewOpt) {
+    daqNewOpt.innerText = "";
+  }
+}
+
+async function execJob() {
+  execjob("run");
+}
+
+async function runBatchButton(routeName, errorPrefix) {
+  const formData = new FormData(
+    document.getElementById("pymodule_configurations")
+  );
+  const payload = {};
+  formData.forEach((value, key) => {
+    payload[key] = value;
+  });
+
+  try {
+    const response = await fetchWithTimeout(`/task3/${routeName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken(),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw await response.json();
+    }
+    clearModuleDraft();
+    await updateStatus();
+  } catch (error) {
+    alert(errorPrefix + JSON.stringify(error));
+  }
+}
+
+async function autoTestJob() {
+  await runBatchButton("autotest", "AutoTest failed: ");
+}
+
+async function iv3TestJob() {
+  await runBatchButton("iv3test", "IV3 Test failed: ");
+}
+
+async function stopJob() {
+  execjob("stop");
+}
+
+async function exitJob() {
+  execjob("destroy");
+}
+
+async function clearModuleNumbers() {
+  const password = prompt("Enter password to clear module numbers.");
+  if (password === null) return;
+
+  try {
+    const response = await fetchWithTimeout("/task3/clear_modules", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken(),
+      },
+      body: JSON.stringify({ password }),
+    });
+    if (!response.ok) {
+      throw await response.json();
+    }
+    moduleInputs().forEach((input) => {
+      input.value = "";
+    });
+    clearModuleDraft();
+    await updateStatus();
+  } catch (error) {
+    alert("Clear modules failed: " + JSON.stringify(error));
+  }
+}
+
+function setupConfigureButton() {
+  document.getElementById("confBtn").addEventListener("click", () => {
+    document
+      .getElementById("pymodule_configurations")
+      .dispatchEvent(new Event("submit", { cancelable: true }));
+  });
+}
+
+function setupFormSubmission() {
+  document.getElementById("pymodule_configurations").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    if (!this.checkValidity()) {
+      this.reportValidity();
+      return;
+    }
+
+    const formData = new FormData(this);
+    const obj = {};
+
+    formData.forEach((value, key) => {
+      obj[key] = value;
+    });
+
+    fetchWithTimeout("/task3/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken(),
+      },
+      body: JSON.stringify(obj),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then((err) => Promise.reject(err));
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        if (data.status === "success") {
+          alert(data.message);
+          clearModuleDraft();
+          updateStatus();
+        } else {
+          alert("Error: " + JSON.stringify(data.errors));
+        }
+      })
+      .catch((error) => {
+        alert("Submission failed: " + JSON.stringify(error));
+      });
+  });
+}
+
+function setupDaqSummaryButton() {
+  const button = document.getElementById("daqSummaryBtn");
+
+  if (!button) return;
+
+  button.addEventListener("click", () => {
+    const daqSelect = document.getElementById("daqSelect");
+    const selectedValue = daqSelect.value;
+
+    if (!selectedValue) {
+      alert("Please select a DAQ result first.");
+      return;
+    }
+
+    window.open(`/daqsummary/gallery/${encodeURIComponent(selectedValue)}`, "_blank");
+  });
+}
+
+function setupInputRestriction() {
+  document
+    .querySelectorAll("#pymodule_configurations input.inputModuleID")
+    .forEach((input) => {
+      input.addEventListener("input", function () {
+        this.value = this.value
+          .toUpperCase()
+          .replace(/[^A-Z0-9\-]/g, "")
+          .slice(0, 20);
+        saveModuleDraft();
+      });
+    });
+}
+
+function setupMultiRowPaste() {
+  const moduleInputs = Array.from(
+    document.querySelectorAll(
+      "#pymodule_configurations input.inputModuleID"
+    )
+  );
+
+  moduleInputs.forEach((input, startIndex) => {
+    input.addEventListener("paste", function (event) {
+      const clipboard = event.clipboardData || window.clipboardData;
+
+      if (!clipboard) {
+        return;
+      }
+
+      const pastedText = clipboard.getData("text");
+
+      /*
+       * Keep the browser's normal paste behavior when the clipboard
+       * contains only one value.
+       */
+      const rows = pastedText
+        .split(/\r\n|\r|\n/)
+        .filter((row) => row.trim() !== "");
+
+      if (rows.length <= 1) {
+        return;
+      }
+
+      event.preventDefault();
+
+      rows.forEach((row, offset) => {
+        const targetIndex = startIndex + offset;
+
+        if (targetIndex >= moduleInputs.length) {
+          return;
+        }
+
+        /*
+         * When pasting from Excel or a spreadsheet, use only the
+         * first column from each row.
+         */
+        const firstColumn = row.split("\t")[0];
+
+        const normalizedValue = firstColumn
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9\-]/g, "")
+          .slice(0, 20);
+        saveModuleDraft();
+
+        moduleInputs[targetIndex].value = normalizedValue;
+
+        /*
+         * Notify other listeners that the input changed.
+         */
+        moduleInputs[targetIndex].dispatchEvent(
+          new Event("input", {
+            bubbles: true,
+          })
+        );
+      });
+
+      /*
+       * Move focus to the last field that received a value.
+       */
+      const lastIndex = Math.min(
+        startIndex + rows.length - 1,
+        moduleInputs.length - 1
+      );
+
+      moduleInputs[lastIndex].focus();
+    });
+  });
+}
+document.addEventListener("DOMContentLoaded", () => {
+  restoreModuleDraft();
+  setupConfigureButton();
+  setupFormSubmission();
+  setupDaqSummaryButton();
+  setupInputRestriction();
+  setupMultiRowPaste();
+
+  updateStatus();
+  setInterval(updateStatus, 1000);
+});
+
+
+  </script>
+</body>
+
+
+</html>
