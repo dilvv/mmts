@@ -8,6 +8,3 @@ DAQresults/*
 external_packages/*/
 !external_packages/*.*
 tmp_files/*
-.venv
-
-

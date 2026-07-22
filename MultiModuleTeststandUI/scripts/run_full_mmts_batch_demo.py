@@ -99,7 +99,7 @@ def run_command(command, cwd, status_file, stage, summary):
         raise RuntimeError(f"Command failed with exit code {process.returncode}: {' '.join(command)}")
 
 
-def build_iv_command(scan_cfg, module_ids):
+def build_iv_command(scan_cfg, module_ids, batch_id):
     command = ["make", "-f", "makefile_task3", "run"]
     for position, module_id in module_ids.items():
         if module_id:
@@ -107,10 +107,12 @@ def build_iv_command(scan_cfg, module_ids):
     command.append(f"currentTEMPERATURE={scan_cfg['temperature']}")
     command.append(f"currentHUMIDITY={scan_cfg['humidity']}")
     command.append(f"maxVOLTAGE={scan_cfg['max_voltage']}")
+    command.append(f"iteration={scan_cfg['iteration']}")
+    command.append(f"batch={batch_id}")
     return command
 
 
-def run_iv_scan(scan_name, scan_cfg, module_ids, status_file):
+def run_iv_scan(scan_name, scan_cfg, module_ids, batch_id, status_file):
     run_command(
         ["make", "-f", "makefile_task3", "initialize"],
         cwd=UI_ROOT,
@@ -119,7 +121,7 @@ def run_iv_scan(scan_name, scan_cfg, module_ids, status_file):
         summary=f"Initializing IV hardware for {scan_name}.",
     )
     run_command(
-        build_iv_command(scan_cfg, module_ids),
+        build_iv_command(scan_cfg, module_ids, batch_id),
         cwd=UI_ROOT,
         status_file=status_file,
         stage=scan_name,
@@ -224,12 +226,15 @@ def run_cycle(name, config_path, force_run, status_file):
 def main():
     args = parse_args()
     cfg = load_demo_config(args.config)
+    batch_id = str(cfg.get("batch") or datetime.now().strftime("%Y%m%d-%H%M%S"))
+    cfg["batch"] = batch_id
     plc_runtime_cfg = load_config(os.path.join(PLC_ROOT, "HMI_Control.yml"))["plc"]
 
     write_status({
         "runner": "run_full_mmts_batch_demo.py",
         "status": "starting",
         "started_at": now_iso(),
+        "batch": batch_id,
         "config_path": os.path.abspath(args.config),
         "phase": "startup",
         "phase_state": "starting",
@@ -281,7 +286,7 @@ def main():
             if precheck.get("require_standby", True) and snapshot["plc_status_code"] != 1:
                 raise RuntimeError(f"PLC is not in standby. Current status: {snapshot}")
 
-            run_iv_scan("iv1", iv_scans["iv1"], cfg["module_ids"], args.status_file)
+            run_iv_scan("iv1", iv_scans["iv1"], cfg["module_ids"], batch_id, args.status_file)
 
             wait_for_dewpoint(
                 client=client,
@@ -313,7 +318,7 @@ def main():
                 poll_seconds=args.poll_seconds,
             )
 
-            run_iv_scan("iv2", iv_scans["iv2"], cfg["module_ids"], args.status_file)
+            run_iv_scan("iv2", iv_scans["iv2"], cfg["module_ids"], batch_id, args.status_file)
             wait_for_status_code(
                 name="cycle1_complete",
                 client=client,
@@ -344,7 +349,7 @@ def main():
                 poll_seconds=args.poll_seconds,
             )
 
-            run_iv_scan("iv3", iv_scans["iv3"], cfg["module_ids"], args.status_file)
+            run_iv_scan("iv3", iv_scans["iv3"], cfg["module_ids"], batch_id, args.status_file)
             update_status({
                 "status": "completed",
                 "phase": "done",

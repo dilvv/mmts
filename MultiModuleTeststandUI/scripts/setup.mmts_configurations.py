@@ -55,6 +55,12 @@ def mmts_configs(pathto_HGCal_Module_Production_Toolkit, pathto_hgcal_module_tes
 
     mmts_config_dict = {
             'inspector': 'any string',
+            'thermalcycle_iterations': {
+                'iteration_1': 'iteration_1: room condition, high humidity',
+                'iteration_2': 'iteration_2: first low temperature',
+                'iteration_3': 'iteration_3: last low temperature',
+                'iteration_4': 'iteration_4: final IV, normal temperature',
+            },
             'path_HGCal_Module_Production_Toolkit': pathto_HGCal_Module_Production_Toolkit,
             'path_hgcal_module_testing_gui': pathto_hgcal_module_testing_gui,
             'grafana_dashboard_url': urlto_GRAFANAdashbaord,
@@ -123,5 +129,3 @@ if __name__ == '__main__':
         yaml.dump(confBASE, fout)
         yaml.dump(confMMTS, fout)
     log.info(f'[Conf Created] {oFILE} created. You need to fill new values')
-
-

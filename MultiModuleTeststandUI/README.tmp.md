@@ -4,7 +4,7 @@
 ```
 python3 -m venv .venv
 source .venv/bin/activate
-pip3 install   flask   flask-socketio   requests   sphinx   paramiko   pyvisa   pyvisa-py   pyyaml   flask-wtf   myst-parser   flask-cors   pymeasure==0.14.0   "python-snap7<3"   psycopg psycopg2-binary
+pip3 install   flask   flask-socketio   requests   sphinx   paramiko   pyvisa   pyvisa-py   pyyaml   flask-wtf   myst-parser   flask-cors   pymeasure   psycopg psycopg2-binary
 sudo apt update
 sudo apt install python3-psycopg python3-psycopg-c
 sudo apt update && sudo apt install firewalld
@@ -88,9 +88,9 @@ make -f makefile_task3
 # Usage: make <command>
 # 		[moduleID1L][moduleID1C][moduleID1R]
 # 		[moduleID2L][moduleID2C][moduleID2R]
-# 
+#
 # Commands:
-# 
+#
 #   all_IVscan       IV scan does not support multithread
 #   initialize       initialize
 #   run              all IV scan (only single threaded allowed) [currentTEMPERATURE=20][currentHUMIDITY=50][switch_delay=0]
@@ -124,4 +124,3 @@ make -f makefile_task3 stop
 ### destroy button
 make -f makefile_task3 destroy
 ```
-

@@ -98,7 +98,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 import flask_apps.app_task1    as app_task1
 import flask_apps.app_task2    as app_task2
-import flask_apps.app_task3    as app_task3 #import flask_apps.app_task3_plot    as app_plot3
+import flask_apps.app_task3    as app_task3
 import flask_apps.app_daqsummary as app_daqsummary
 
 app = Flask(__name__)
@@ -145,7 +145,7 @@ def set_option():
         mesg = f'[set_option] ignore changing jobmode due to jobmode {shared_state.jobmode} / status {shared_state.server_status}'
         log.info(mesg)
         return jsonify({"status": "success", "message": mesg})
-        
+
 
 #@app.route('/status')
 #def status():
@@ -171,4 +171,3 @@ if __name__ == "__main__":
     else:
         shared_state.debug_mode = False
         app.run(debug=True, port=5001, host='0.0.0.0') ### for stable product so you can use http://192.16..o.x:5001 access it
-

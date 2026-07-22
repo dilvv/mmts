@@ -1,3 +1,5 @@
+batch: ""
+
 demo_controls:
   dewpoint_threshold_C: -10
   dry_run: false
@@ -22,14 +24,17 @@ cycle_configs:
 
 iv_scans:
   iv1:
+    iteration: iteration_1
     temperature: 23
     humidity: 50
     max_voltage: 500
   iv2:
+    iteration: iteration_2
     temperature: -40
     humidity: 0
     max_voltage: 850
   iv3:
+    iteration: iteration_4
     temperature: 20
     humidity: 0
     max_voltage: 850

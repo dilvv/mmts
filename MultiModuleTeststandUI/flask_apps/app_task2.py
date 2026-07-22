@@ -5,40 +5,100 @@ from flask import Flask, render_template, request, jsonify, Blueprint
 from flask import current_app
 from flask_wtf import FlaskForm
 from flask_wtf.csrf import CSRFProtect
-from wtforms.validators import DataRequired, Regexp
-from wtforms import StringField, SubmitField
+from wtforms.validators import DataRequired, Regexp, InputRequired, NumberRange, AnyOf
+from wtforms import StringField, SubmitField, RadioField, IntegerField
 import flask_apps.shared_state as shared_state
 from PythonTools.server_status import isCommandRunable
+from datetime import datetime
 import re
 import os
 ### HTTP status codes https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
 
-JOBMODE = 'task2' # pedestal run
+JOBMODE = 'task2' # IV scan
 
+andrewCONF = f'{os.environ.get("AndrewModuleTestingGUI_BASE")}/configuration.yaml'
+dirDAQresult = ''
+try:
+    with open(andrewCONF, 'r') as fIN:
+        import yaml
+        conf = yaml.safe_load(fIN)
+        dirDAQresult = f"{conf['DataLoc']}/daqplots/"
+except FileNotFoundError as e:
+    raise FileNotFoundError(f'\n\n[NoEnvVar] Need to `source ./init_bash_vars.sh` before execute this file') from e
+
+mmtsCONF = 'data/mmts_configurations.yaml'
+external_URL = ''
+external_URL_height = '200px'
+thermalcycle_iterations = {}
+try:
+    with open(mmtsCONF, 'r') as fIN:
+        import yaml
+        conf = yaml.safe_load(fIN)
+        external_URL = conf['externalURL']['IVCurveOnline']['URL']
+        external_URL_height = conf['externalURL']['IVCurveOnline']['height']
+        thermalcycle_iterations = conf.get('thermalcycle_iterations', {
+            'iteration_1': 'iteration_1: room condition, high humidity',
+            'iteration_2': 'iteration_2: first low temperature',
+            'iteration_3': 'iteration_3: last low temperature',
+            'iteration_4': 'iteration_4: final IV, normal temperature',
+        })
+
+
+except FileNotFoundError as e:
+    raise FileNotFoundError(f'\n\n[LackOfMMTSconf] Need to create configuration file "data/mmts_configuration.yaml"') from e
+
+### intrinsic configuration would be defined in flask server instead of user input
+INTRINSIC_CONF = [ 'batch' ]
 CONF_DICT = {
+        'batch': '',    # YYYYMMDD-HHMMSS
+        'currentHUMIDITY': '', # 0~100
+        'currentTEMPERATURE': '',
+        'iteration': '', # batch1
+        'maxVOLTAGE': '', # 500 or 850
         'moduleID1L': '',
         'moduleID1C': '',
         'moduleID1R': '',
-
         'moduleID2L': '',
         'moduleID2C': '',
         'moduleID2R': '',
-
         'moduleID3L': '',
         'moduleID3C': '',
         'moduleID3R': '',
+
+        'moduleID4L': '',
+        'moduleID4C': '',
+        'moduleID4R': '',
+        'moduleID5L': '',
+        'moduleID5C': '',
+        'moduleID5R': '',
+        'moduleID6L': '',
+        'moduleID6C': '',
+        'moduleID6R': '',
+
+        'moduleID7L': '',
+        'moduleID7C': '',
+        'moduleID7R': '',
+        'moduleID8L': '',
+        'moduleID8C': '',
+        'moduleID8R': '',
         }
 
 def ExecCMD(jobID:str, confDICT:dict):
+    make_command = 'make -n' if shared_state.debug_mode else 'make'
+   #make_command = 'make -n'
     if jobID == 'Init':
-        return 'make -f makefile_task2 initialize JobName=Init'
+        return f'{make_command} -f makefile_task3  initialize JobName=Init'
     if jobID == 'Run':
-        dictOPTs = ' '.join([ f'{key}={val}' for key,val in CONF_DICT.items() if val != '' ])
-        return 'make -f makefile_task2 run -j1 JobName=Run ' + dictOPTs
+        shared_state.runidx+=1
+        runTAG = f'run{shared_state.runidx}'
+        dictOPTs = ' '.join([ f'{key}={val}' for key,val in confDICT.items() if val != '' ])
+
+        ### a patch END
+        return f'{make_command} -f makefile_task3  run ' + dictOPTs
     if jobID == 'Stop':
-        return 'make -f makefile_task2 stop JobName=Stop'
+        return f'{make_command} -f makefile_task3  stop JobName=Stop'
     if jobID == 'Destroy':
-        return 'make -f makefile_task2 destroy JobName=Destroy'
+        return f'{make_command} -f makefile_task3  destroy JobName=Destroy'
 
 
 
@@ -86,14 +146,18 @@ def set_thread(runTYPE, tHREAD:threading.Thread):
         logger.warning(f'[InvalidRunType] set_thread() add "{runTYPE}" in the threading pool')
 
     if job_thread[runTYPE] and job_thread[runTYPE].is_alive():
-        #logger.warning(f'[JobIsRunning] set_thread() got running thread. overwrite this running thread')
         logger.warning(f'[JobIsRunning] set_thread() got running thread. waiting for previous thread finished')
         job_thread[runTYPE].join()
 
     job_thread[runTYPE] = tHREAD
 
 
+
 def set_server_status(newSTAT):
+    if shared_state.server_status == 'error': ## if error
+        if newSTAT not in [ 'destroying', ]:
+            return
+
     shared_state.server_status = newSTAT
 
 def server_status_is(checkSTAT):
@@ -156,8 +220,12 @@ def run_command(cmd: str, jobID):
             logger.error(f'[{jobID}][Error - ErrorMessage     ] run_command() "{e}"')
     finally:
         process.wait()
-        set_server_status('idle')
-        logger.info(f'[{jobID}][finally] run_command() sets system to idle')
+        if process.returncode == 0:
+            set_server_status('idle')
+            logger.info(f'[{jobID}][finally] run_command() sets system to idle')
+        else:
+            set_server_status('error')
+            logger.info(f'[{jobID}][error] run_command() sets system to error. Please destroy and initialize it')
 
 
 
@@ -180,8 +248,10 @@ def Init():
         def background_worker():
             try:
                 command = ExecCMD(CMD_ID, CONF_DICT)
+                #current_app.logger.debug(f'[bkg CMD Init] {command}')
                 run_command(command, CMD_ID)
             finally:
+                shared_state.DAQresult_current_modified = ''
                 set_server_status('initialized')
                 logger.info("Job status set to idle.")
             logger.info('background worker ended')
@@ -195,19 +265,49 @@ def Init():
 
     return '', 204
 
-alphanumeric_validator = Regexp("^[a-zA-Z0-9]*$", message="Only letters and numbers allowed.")
+alphanumeric_validator = Regexp(r"^[a-zA-Z0-9-]*$", message="Only letters and numbers and dash allowed.")
 class ConfigForm(FlaskForm):
+   #currentTEMPERATURE = StringField("currentTEMPERATURE", validators=[InputRequired(message='Temperature Missing')])
+    currentTEMPERATURE = IntegerField("currentTEMPERATURE", validators=[
+        NumberRange(min=-50.,max=50., message='Number from -50 to 50'),
+        InputRequired(message='Temperature Missing')]
+                                     )
+   #moduleSTATUS = RadioField("moduleSTATUS", validators=[InputRequired()])
+    currentHUMIDITY    = IntegerField("currentHUMIDITY"   , validators=[
+        NumberRange(min=0.,max=100., message='Number from 0 to 100'),
+        InputRequired(message='Humidity Missing')]
+                                     )
+    maxVOLTAGE = StringField("maxVOLTAGE", validators=[InputRequired(message='Max Voltage Missing')])
+    iteration  = StringField("iteration"   , validators=[InputRequired(message='select an iteration'),
+                                                       AnyOf(values=thermalcycle_iterations.keys(), message=f"Invalid choice, available choices '{thermalcycle_iterations.keys()}'")
+                                                      ])
+
     moduleID1L = StringField("moduleID1L", validators=[alphanumeric_validator])
     moduleID1C = StringField("moduleID1C", validators=[alphanumeric_validator])
     moduleID1R = StringField("moduleID1R", validators=[alphanumeric_validator])
-
     moduleID2L = StringField("moduleID2L", validators=[alphanumeric_validator])
     moduleID2C = StringField("moduleID2C", validators=[alphanumeric_validator])
     moduleID2R = StringField("moduleID2R", validators=[alphanumeric_validator])
-
     moduleID3L = StringField("moduleID3L", validators=[alphanumeric_validator])
     moduleID3C = StringField("moduleID3C", validators=[alphanumeric_validator])
     moduleID3R = StringField("moduleID3R", validators=[alphanumeric_validator])
+
+    moduleID4L = StringField("moduleID4L", validators=[alphanumeric_validator])
+    moduleID4C = StringField("moduleID4C", validators=[alphanumeric_validator])
+    moduleID4R = StringField("moduleID4R", validators=[alphanumeric_validator])
+    moduleID5L = StringField("moduleID5L", validators=[alphanumeric_validator])
+    moduleID5C = StringField("moduleID5C", validators=[alphanumeric_validator])
+    moduleID5R = StringField("moduleID5R", validators=[alphanumeric_validator])
+    moduleID6L = StringField("moduleID6L", validators=[alphanumeric_validator])
+    moduleID6C = StringField("moduleID6C", validators=[alphanumeric_validator])
+    moduleID6R = StringField("moduleID6R", validators=[alphanumeric_validator])
+
+    moduleID7L = StringField("moduleID7L", validators=[alphanumeric_validator])
+    moduleID7C = StringField("moduleID7C", validators=[alphanumeric_validator])
+    moduleID7R = StringField("moduleID7R", validators=[alphanumeric_validator])
+    moduleID8L = StringField("moduleID8L", validators=[alphanumeric_validator])
+    moduleID8C = StringField("moduleID8C", validators=[alphanumeric_validator])
+    moduleID8R = StringField("moduleID8R", validators=[alphanumeric_validator])
     submit = SubmitField("Configure")
 
 @app.route('/submit', methods=['POST','GET'])
@@ -221,6 +321,8 @@ def Configure():
 
 
     json_data = request.get_json()
+
+    print('\n\n\n',json_data,'\n\n\n')
     if not json_data:
         return jsonify({'status': 'error', 'message': 'Missing JSON data'}), 400
 
@@ -240,7 +342,8 @@ def Configure():
 
 
     def ignore_special_characters(string):
-        return re.sub(r'[^A-Za-z0-9]+', '', string) if string else ''
+        return re.sub(r'[^A-Za-z0-9\-]+', '', string) if string else '' ## allow capital characters, numbers
+        #return re.sub(r'[^A-Za-z0-9]+', '', string) if string else '' ## allow capital characters, numbers and dash
 
 
     # Update CONF_DICT only if field has data
@@ -249,21 +352,47 @@ def Configure():
     current_app.logger.debug(f'[LoadFormFromClient] Form "{vars(form)}"')
 
     for varname in CONF_DICT.keys():
+        if varname in INTRINSIC_CONF: continue ## pass some variable not from configuration
+
         value = getattr(form, varname).data if hasattr(form, varname) else ''
-        current_app.logger.debug(f'[GotValue] Form {varname} got original value "{getattr(form,varname).data}"')
-        clean_val = ignore_special_characters(value)
+        current_app.logger.debug(f'[GotValue] Form {varname} got original value "{value}"')
+        clean_val = ignore_special_characters(str(value))
         if len(clean_val) > 20:
             current_app.logger.warning(f'[InputTooLong] Input {varname}:{clean_val} too long, resetting.')
             clean_val = ''
         CONF_DICT[varname] = clean_val
+
+        if varname == 'iteration': ## add date as postfix
+            now = datetime.now()
+            CONF_DICT['batch'] = now.strftime("%Y%m%d-%H%M%S")
+
+
         current_app.logger.debug(f'[UpdateConfigure] Input {varname}:{CONF_DICT[varname]} updated.')
 
 
-    conf_mesg = lambda d: f'''Configurations\n
-        1L: {d.get('moduleID1L', ''):12s}\n1C: {d.get('moduleID1C', ''):12s}\n1R: {d.get('moduleID1R', ''):12s}\n
-        Note: Configuration saved. Please verify the settings.
-    '''
+    def conf_mesg(d):
+        input_modules = [ moduleID for dict_key, moduleID in d.items() if moduleID and 'moduleID' in dict_key ]
+        moduleID_set = set()
+        duplicates = set(x for x in input_modules if x in moduleID_set or moduleID_set.add(x))
 
+        got_n_modules = len(input_modules)
+
+        has_duplicate_moduleID = len(duplicates) != 0
+        check1_mesg = f'\nHOWEVER duplicate modules:\n  {duplicates}' if has_duplicate_moduleID else '\nNo duplicate module'
+
+
+        return f'''
+got {got_n_modules} modules.
+{check1_mesg}
+'''
+
+
+
+    is_empty_dict = sum( 1  if v else 0 for _,v in CONF_DICT.items()) == 0
+    if is_empty_dict:
+        errors = 'Got empty configurations!'
+        current_app.logger.warning(f'[Configure] {errors}')
+        return jsonify({'status': 'error', 'errors': errors}), 400
 
     current_app.logger.info(conf_mesg(CONF_DICT))
     current_app.logger.info(f'[Configure] Current CONF_DICT: {CONF_DICT}')
@@ -291,6 +420,7 @@ def Run():
         def background_worker():
             try:
                 command = ExecCMD(CMD_ID, CONF_DICT)
+                #current_app.logger.debug(f'[bkg CMD Run] {command}')
                 run_command(command, CMD_ID)
             finally:
                 set_server_status('idle')
@@ -316,6 +446,7 @@ def Stop():
     job_stop_flags['Run'].set()
     current_app.logger.debug(f'[ServerAction][Stop] set job_stop_flags as True')
 
+    os.system('pkill make 2>/dev/null') ## force kill all jobs from make commands
     if job_thread['Run'] and job_thread['Run'].is_alive():
         job_thread['Run'].join()
 
@@ -325,6 +456,7 @@ def Stop():
     def background_worker():
         try:
             command = ExecCMD(CMD_ID, CONF_DICT)
+            #current_app.logger.debug(f'[bkg CMD Stop] {command}')
             run_command(command, CMD_ID)
         finally:
             set_server_status('idle')
@@ -347,7 +479,7 @@ def Destroy():
         set_server_status('destroying')
         for name, flag in job_stop_flags.items(): flag.set()
         current_app.logger.debug(f'[ServerAction][{CMD_ID}] set ALL job_stop_flags as True')
-        os.system('pkill make') ## force kill all jobs from make command
+        os.system('pkill make 2>/dev/null') ## force kill all jobs from make commands
 
         for name, t in job_thread.items():
             if t and t.is_alive():
@@ -360,6 +492,7 @@ def Destroy():
         def background_worker():
             try:
                 command = ExecCMD(CMD_ID, CONF_DICT)
+                #current_app.logger.debug(f'[bkg CMD Destroy] {command}')
                 run_command(command, CMD_ID)
             finally:
                 logger.info("Destory ended")
@@ -373,14 +506,32 @@ def Destroy():
         current_app.logger.debug(f'[ServerAction][{CMD_ID}] Current status is {shared_state.server_status}. reject "{CMD_ID}" command')
     return '', 204
 
+### asdf deleted?
 @app.route('/status')
 def status():
-    return jsonify( {'status':shared_state.server_status, 'jobmode': shared_state.jobmode} )
+    hasupdate = False
+
+    last_modified = os.path.getmtime(dirDAQresult)
+    if last_modified != shared_state.DAQresult_current_modified:
+        hasupdate = True
+        shared_state.DAQresult_current_modified = last_modified
+
+    ### if something updated, list all sub directories as list. Or return empty list
+    daq_result_dirs = [ subdir for subdir in os.listdir(dirDAQresult) if os.path.isdir(f'{dirDAQresult}/{subdir}') ] if hasupdate else []
+    return jsonify( {'status':shared_state.server_status, 'jobmode': shared_state.jobmode, 'DAQres': daq_result_dirs} )
 
 
 @app.route('/main.html')
 def main():
-    return render_template('index_task2.html')
+    daq_result_dirs = [ subdir for subdir in os.listdir(dirDAQresult) if os.path.isdir(f'{dirDAQresult}/{subdir}') ]
+    return render_template('index_task2.html',
+                           DAQres=daq_result_dirs,
+                           currentCONF=CONF_DICT,
+                           ccc='',
+                           IVCurveOnline_URL=external_URL,
+                           IVCurveOnline_height=external_URL_height,
+                           thermalCYCLE_iterationDICT = thermalcycle_iterations,
+                           )
 
 
 if __name__ == '__main__':
@@ -396,4 +547,4 @@ if __name__ == '__main__':
     @app_main.route("/")
     def index():
         return render_template("index_task2.html")
-    app_main.run(debug=True)
+    app_main.run(debug=True, port=5005)

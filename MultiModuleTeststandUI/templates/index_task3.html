@@ -3,1167 +3,1215 @@
 <head>
   <meta charset="utf-8">
   <title>IV Scan</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+
+  <meta name="csrf_token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+
 </head>
-<body id="i3bn">
-  <section id="ij10l" class="flex-sect">
-    <div id="it8wd" class="container-width">
-      <div id="ihtsc" class="flex-title">IV Scanning
-      </div>
-      <div id="idewg" class="gjs-row">
-        <div id="i1sqf" class="gjs-cell">
-          <div class="autotest-row">
-            <button type="button" id="autoTestBtn" disabled class="ctrlbtn auto-test-btn" onclick="autoTestJob()">AutoTest</button>
-            <button type="button" id="iv3TestBtn" disabled class="ctrlbtn auto-test-btn" onclick="iv3TestJob()">IV3 Test</button>
-          </div>
-          <div class="manual-action-row">
-          <button type="button" id="initBtn"          class="ctrlbtn" onclick="initJob()">Initialize</button>
-          <button type="button" id="confBtn" disabled class="ctrlbtn"                    >Configure</button>
-          <button type="button" id="execBtn" disabled class="ctrlbtn" onclick="execJob()">Run</button>
-          <button type="button" id="stopBtn" disabled class="ctrlbtn" onclick="stopJob()">Stop</button>
-          <button type="button" id="exitBtn" disabled class="ctrlbtn" onclick="exitJob()">Destroy</button>
-          </div>
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f4f6f8;
+  color: #1f2933;
+  min-width: 650px;
+}
+
+.page {
+  width: min(1400px, 96vw);
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.page-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.card {
+  margin-bottom: 20px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #d9e2ec;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.card h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+
+/* --------------------------------------------------
+   Control panel
+-------------------------------------------------- */
+
+.control-panel {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: center;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.batch-action-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.ctrlbtn,
+.small-btn {
+  min-width: 110px;
+  padding: 10px 16px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ctrlbtn.secondary {
+  border-color: #64748b;
+  background: #64748b;
+}
+
+.ctrlbtn.danger {
+  border-color: #dc2626;
+  background: #dc2626;
+}
+
+.ctrlbtn:hover:not(:disabled),
+.small-btn:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.ctrlbtn:disabled,
+.small-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.status-box {
+  display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.status-label {
+  font-weight: 700;
+  color: #475569;
+}
+
+#statusText {
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.batch-status-panel {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #111827;
+  color: #f3f4f6;
+}
+
+.batch-status-title {
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+#batchStatusText {
+  white-space: pre-line;
+  font-family: Consolas, monospace;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------
+   Environment controls
+-------------------------------------------------- */
+
+.env-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+/*
+  All four environment blocks use:
+  <fieldset class="env-control">
+    <legend>...</legend>
+    ...
+  </fieldset>
+*/
+fieldset.env-control {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #d9e2ec;
+  border-radius: 10px;
+  background: #f8fafc;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+fieldset.env-control:hover {
+  border-color: #94a3b8;
+  background: #ffffff;
+}
+
+fieldset.env-control:focus-within {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+fieldset.env-control legend {
+  max-width: calc(100% - 12px);
+  padding: 0 6px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+/* Text inputs and dropdown */
+.env-control input[type="text"],
+.env-control input[type="number"],
+.env-control select {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  margin-top: auto;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.env-control select {
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+.env-control input[type="text"]:focus,
+.env-control input[type="number"]:focus,
+.env-control select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* Voltage block */
+.voltage-field {
+  min-width: 0;
+}
+
+.voltage-options {
+  display: flex;
+  flex: 0 0 42px;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.voltage-option {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.voltage-option:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.voltage-option:has(input:checked) {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.voltage-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0 7px 0 0;
+  accent-color: #2563eb;
+}
+
+/* Disabled environment controls */
+.env-control input:disabled,
+.env-control select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: #e2e8f0;
+}
+
+.voltage-option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* --------------------------------------------------
+   Module ID controls
+-------------------------------------------------- */
+
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.module-cell {
+  display: grid;
+  grid-template-columns: 18px 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.module-cell input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.module-cell input:focus {
+  outline: 2px solid #93c5fd;
+  border-color: #2563eb;
+}
+
+.module-cell input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: #e2e8f0;
+}
+
+.status-led {
+  width: 14px;
+  height: 14px;
+  min-height: 14px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.labelModuleID {
+  font-weight: 700;
+}
+
+/* --------------------------------------------------
+   DAQ controls
+-------------------------------------------------- */
+
+.daq-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+#daqNewOpt {
+  margin-right: auto;
+  font-family: monospace;
+  color: #475569;
+}
+
+#daqSelect {
+  width: 100%;
+  max-width: 360px;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2933;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+#daqSelect:focus {
+  outline: 2px solid #93c5fd;
+  border-color: #2563eb;
+}
+
+.small-btn {
+  min-width: auto;
+  padding: 8px 12px;
+}
+
+/* --------------------------------------------------
+   Grafana / iframe
+-------------------------------------------------- */
+
+.grafana-frame {
+  width: 100%;
+  height: 650px;
+  border: none;
+  border-radius: 8px;
+  background: #000000;
+}
+
+/* --------------------------------------------------
+   Responsive layout
+-------------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .env-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .control-panel,
+  .module-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .button-row,
+  .batch-action-row,
+  .status-box,
+  .batch-status-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .daq-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #daqNewOpt {
+    margin-right: 0;
+  }
+
+  #daqSelect {
+    max-width: none;
+  }
+}
+
+@media (max-width: 650px) {
+  .page {
+    width: min(100% - 24px, 1400px);
+    padding: 12px 0;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .env-grid {
+    grid-template-columns: 1fr;
+  }
+
+  fieldset.env-control {
+    min-height: auto;
+  }
+
+  .voltage-options {
+    flex-basis: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .voltage-options {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .voltage-option {
+    flex: none;
+    width: 100%;
+  }
+
+  .module-cell {
+    grid-template-columns: 18px 36px minmax(0, 1fr);
+    padding: 10px;
+  }
+}
+</style>
+
+<body>
+  <main class="page">
+    <header class="page-header">
+      <h1>IV Scanning</h1>
+    </header>
+
+    <section class="card">
+      <div class="control-panel">
+        <div class="button-row">
+          <button type="button" id="initBtn" class="ctrlbtn" onclick="initJob()">Initialize</button>
+          <button type="button" id="confBtn" class="ctrlbtn" disabled>Configure</button>
+          <button type="button" id="execBtn" class="ctrlbtn" onclick="execJob()" disabled>Run</button>
+          <button type="button" id="stopBtn" class="ctrlbtn danger" onclick="stopJob()" disabled>Stop</button>
+          <button type="button" id="exitBtn" class="ctrlbtn secondary" onclick="exitJob()" disabled>Destroy</button>
         </div>
-        <div id="i5xn8" class="gjs-cell">
+        <div class="batch-action-row">
+          <button type="button" id="autoTestBtn" class="ctrlbtn" onclick="autoTestJob()" disabled>AutoTest</button>
+          <button type="button" id="iv3TestBtn" class="ctrlbtn" onclick="iv3TestJob()" disabled>IV3 Test</button>
+          <button type="button" id="clearModulesBtn" class="ctrlbtn secondary" onclick="clearModuleNumbers()" disabled>Clear Modules</button>
+        </div>
+
+        <div class="status-box">
+          <span class="status-label">Status</span>
+          <span id="statusText">Loading...</span>
+        </div>
+
+        <div class="batch-status-panel">
+          <div class="batch-status-title">Auto Batch Status</div>
+          <div id="batchStatusText">No auto batch status file yet.</div>
         </div>
       </div>
-      <div id="batchStatusPanel" class="batch-status-panel">
-        <div class="batch-status-title">Auto Batch Status</div>
-        <div id="statusText" class="server-status-line">server: startup</div>
-        <div id="batchStatusText">No auto batch status file yet.</div>
-      </div>
-      <form method="POST" id="pymodule_configurations" action="/task3/submit">
-        <meta name="csrf_token" type="hidden" content="{{ csrf_token() }}"/>
-        <br/>
-        <!-- === New Radio Buttons === -->
-        <div id="radioContainer" class="cards">
-          <div id="iql44" class="gjs-row">
-            <div class="gjs-cell" id="inta7e">
-              <div id="i8wfow">Temperature
+    </section>
+
+    <form method="POST" id="pymodule_configurations" action="/task3/submit">
+      <section class="card">
+        <h2>Environment</h2>
+
+        <div class="env-grid">
+          <fieldset class="env-control">
+            <legend>Temperature</legend>
+
+            <input
+              type="text"
+              name="currentTEMPERATURE"
+              id="currentTEMPERATURE"
+              class="configuration-input"
+              value="{{ currentCONF.get('currentTEMPERATURE', '') | e }}"
+              placeholder="50"
+              required>
+          </fieldset>
+
+          <fieldset class="env-control">
+            <legend>Humidity</legend>
+
+            <input
+              type="text"
+              name="currentHUMIDITY"
+              id="currentHUMIDITY"
+              class="configuration-input"
+              value="{{ currentCONF.get('currentHUMIDITY', '') | e }}"
+              placeholder="50"
+              required>
+          </fieldset>
+
+          <fieldset class="env-control voltage-field">
+            <legend>Maximum voltage</legend>
+
+            <div class="voltage-options">
+
+              <label class="voltage-option">
+                <input
+                  type="radio"
+                  name="maxVOLTAGE"
+                  value="500"
+                  class="configuration-input"
+                  {% if currentCONF.get('maxVOLTAGE') | string == '500' %}
+                  checked
+                  {% endif %}
+                  required>
+                500 V
+              </label>
+
+              <label class="voltage-option">
+                <input
+                  type="radio"
+                  name="maxVOLTAGE"
+                  value="850"
+                  class="configuration-input"
+                  {% if currentCONF.get('maxVOLTAGE') | string == '850' %}
+                  checked
+                  {% endif %}>
+                850 V
+              </label>
+
+            </div>
+          </fieldset>
+
+          <fieldset class="env-control">
+            <legend>Thermal-cycle iteration</legend>
+
+            {% set selected_iteration = currentCONF.get('iteration', '') %}
+
+            <select
+              name="iteration"
+              id="iteration"
+              class="configuration-input"
+              required>
+
+              <option value="" disabled {% if not selected_iteration %}selected{% endif %}>
+                Select an iteration
+              </option>
+
+              {% for iteration, iteration_desc in thermalCYCLE_iterationDICT.items() %}
+              <option
+                value="{{ iteration | e }}"
+                {% if iteration == selected_iteration %}selected{% endif %}>
+                {{ iteration_desc }}
+              </option>
+              {% endfor %}
+
+            </select>
+          </fieldset>
+
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Module IDs</h2>
+
+        <div class="module-grid">
+          {% for row in range(1, 9) %}
+            {% for pos in ["L", "C", "R"] %}
+              {% set module_key = 'moduleID' ~ row ~ pos %}
+              <div class="module-cell">
+                <button
+                  type="button"
+                  class="statusModuleID status-led"
+                  id="LED{{ row }}{{ pos }}"
+                  aria-label="Status {{ row }}{{ pos }}">
+                </button>
+
+                <label class="labelModuleID" for="{{ module_key }}">
+                  {{ row }}{{ pos }}
+                </label>
+
+                <input
+                  type="text"
+                  placeholder="Module ID"
+                  name="{{ module_key }}"
+                  id="{{ module_key }}"
+                  class="inputModuleID"
+                  value="{{ currentCONF.get(module_key, '') | e }}">
               </div>
-            </div>
-          </div>
-          <div id="iql44" class="gjs-row">
-            <div id="ig3nn" class="gjs-cell form-row">
-              <label id="iy4ud"><input type="radio" name="currentTEMPERATURE" value="23" required/>Room Temperature</label>
-            </div>
-            <div id="ie7gk" class="gjs-cell form-row">
-              <label id="iio4i"><input type="radio" name="currentTEMPERATURE" value="-40" required/>-40</label>
-            </div>
-            <div id="i0vy1u" class="gjs-cell form-row">
-              <label id="i6hsb"><input type="radio" name="currentTEMPERATURE" value="20" required/>20</label>
-            </div>
-            <div id="icpqsl" class="gjs-cell form-row">
-              <label>Humidity</label>
-              <input type="text" placeholder="50" name="currentHUMIDITY" class="inputModuleID" required/>
-            </div>
-          </div>
-          <div class="gjs-row">
-            <div class="gjs-cell form-row">
-              <button type="button" id="clearModulesBtn" class="ctrlbtn auto-test-btn" onclick="clearModuleNumbers()">Clear Modules</button>
-            </div>
-          </div>
+            {% endfor %}
+          {% endfor %}
         </div>
-        <div id="ikqal8" class="cards">
-
-          <div id="i5oney" class="gjs-row">
-            <div id="iav7ih" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED1L"></button>
-              <label class="labelModuleID">1L</label>
-              <input type="text" placeholder="Module ID" name="moduleID1L" class="inputModuleID" value="{{ currentCONF.get('moduleID1L') | e }}" id="moduleID1L"/>
-            </div>
-            <div id="ixp0rj" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED1C"></button>
-              <label class="labelModuleID">1C</label>
-              <input type="text" placeholder="Module ID" name="moduleID1C" class="inputModuleID" value="{{ currentCONF.get('moduleID1C') | e }}" id="moduleID1C"/>
-            </div>
-            <div id="i7v6dg" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED1R"></button>
-              <label class="labelModuleID">1R</label>
-              <input type="text" placeholder="Module ID" name="moduleID1R" class="inputModuleID" value="{{ currentCONF.get('moduleID1R') | e }}" id="moduleID1R"/>
-            </div>
-          </div>
-          <div id="i55fvd" class="gjs-row">
-            <div id="icpqsl" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED2L"></button>
-              <label class="labelModuleID">2L</label>
-              <input type="text" placeholder="Module ID" name="moduleID2L" class="inputModuleID" value="{{ currentCONF.get('moduleID2L') | e }}" id="moduleID2L"/>
-            </div>
-            <div id="igwgq1" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED2C"></button>
-              <label id="ii6n0i" class="labelModuleID">2C</label>
-              <input type="text" placeholder="Module ID" name="moduleID2C" class="inputModuleID" value="{{ currentCONF.get('moduleID2C') | e }}" id="moduleID2C"/>
-            </div>
-            <div id="i535on" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED2R"></button>
-              <label id="ic4bpb" class="labelModuleID">2R</label>
-              <input type="text" placeholder="Module ID" name="moduleID2R" class="inputModuleID" value="{{ currentCONF.get('moduleID2R') | e }}" id="moduleID2R"/>
-            </div>
-          </div>
-
-          <div id="i5oney3" class="gjs-row">
-            <div id="iav7ih3" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED3L"></button>
-              <label class="labelModuleID">3L</label>
-              <input type="text" placeholder="Module ID" name="moduleID3L" class="inputModuleID" value="{{ currentCONF.get('moduleID3L') | e }}" id="moduleID3L"/>
-            </div>
-            <div id="ixp0rj3" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED3C"></button>
-              <label class="labelModuleID">3C</label>
-              <input type="text" placeholder="Module ID" name="moduleID3C" class="inputModuleID" value="{{ currentCONF.get('moduleID3C') | e }}" id="moduleID3C"/>
-            </div>
-            <div id="i7v6dg3" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED3R"></button>
-              <label class="labelModuleID">3R</label>
-              <input type="text" placeholder="Module ID" name="moduleID3R" class="inputModuleID" value="{{ currentCONF.get('moduleID3R') | e }}" id="moduleID3R"/>
-            </div>
-          </div>
-          <div id="i55fvd4" class="gjs-row">
-            <div id="icpqsl4" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED4L"></button>
-              <label class="labelModuleID">4L</label>
-              <input type="text" placeholder="Module ID" name="moduleID4L" class="inputModuleID" value="{{ currentCONF.get('moduleID4L') | e }}" id="moduleID4L"/>
-            </div>
-            <div id="igwgq14" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED4C"></button>
-              <label id="ii6n0i4" class="labelModuleID">4C</label>
-              <input type="text" placeholder="Module ID" name="moduleID4C" class="inputModuleID" value="{{ currentCONF.get('moduleID4C') | e }}" id="moduleID4C"/>
-            </div>
-            <div id="i535on4" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED4R"></button>
-              <label id="ic4bpb4" class="labelModuleID">4R</label>
-              <input type="text" placeholder="Module ID" name="moduleID4R" class="inputModuleID" value="{{ currentCONF.get('moduleID4R') | e }}" id="moduleID4R"/>
-            </div>
-          </div>
-
-          <div id="i5oney5" class="gjs-row">
-            <div id="iav7ih5" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED5L"></button>
-              <label class="labelModuleID">5L</label>
-              <input type="text" placeholder="Module ID" name="moduleID5L" class="inputModuleID" value="{{ currentCONF.get('moduleID5L') | e }}" id="moduleID5L"/>
-            </div>
-            <div id="ixp0rj5" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED5C"></button>
-              <label class="labelModuleID">5C</label>
-              <input type="text" placeholder="Module ID" name="moduleID5C" class="inputModuleID" value="{{ currentCONF.get('moduleID5C') | e }}" id="moduleID5C"/>
-            </div>
-            <div id="i7v6dg5" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED5R"></button>
-              <label class="labelModuleID">5R</label>
-              <input type="text" placeholder="Module ID" name="moduleID5R" class="inputModuleID" value="{{ currentCONF.get('moduleID5R') | e }}" id="moduleID5R"/>
-            </div>
-          </div>
-          <div id="i55fvd6" class="gjs-row">
-            <div id="icpqsl6" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED6L"></button>
-              <label class="labelModuleID">6L</label>
-              <input type="text" placeholder="Module ID" name="moduleID6L" class="inputModuleID" value="{{ currentCONF.get('moduleID6L') | e }}" id="moduleID6L"/>
-            </div>
-            <div id="igwgq16" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED6C"></button>
-              <label id="ii6n0i6" class="labelModuleID">6C</label>
-              <input type="text" placeholder="Module ID" name="moduleID6C" class="inputModuleID" value="{{ currentCONF.get('moduleID6C') | e }}" id="moduleID6C"/>
-            </div>
-            <div id="i535on6" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED6R"></button>
-              <label id="ic4bpb6" class="labelModuleID">6R</label>
-              <input type="text" placeholder="Module ID" name="moduleID6R" class="inputModuleID" value="{{ currentCONF.get('moduleID6R') | e }}" id="moduleID6R"/>
-            </div>
-          </div>
-
-          <div id="i5oney7" class="gjs-row">
-            <div id="iav7ih7" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED7L"></button>
-              <label class="labelModuleID">7L</label>
-              <input type="text" placeholder="Module ID" name="moduleID7L" class="inputModuleID" value="{{ currentCONF.get('moduleID7L') | e }}" id="moduleID7L"/>
-            </div>
-            <div id="ixp0rj7" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED7C"></button>
-              <label class="labelModuleID">7C</label>
-              <input type="text" placeholder="Module ID" name="moduleID7C" class="inputModuleID" value="{{ currentCONF.get('moduleID7C') | e }}" id="moduleID7C"/>
-            </div>
-            <div id="i7v6dg7" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED7R"></button>
-              <label class="labelModuleID">7R</label>
-              <input type="text" placeholder="Module ID" name="moduleID7R" class="inputModuleID" value="{{ currentCONF.get('moduleID7R') | e }}" id="moduleID7R"/>
-            </div>
-          </div>
-          <div id="i55fvd8" class="gjs-row">
-            <div id="icpqsl8" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED8L"></button>
-              <label class="labelModuleID">8L</label>
-              <input type="text" placeholder="Module ID" name="moduleID8L" class="inputModuleID" value="{{ currentCONF.get('moduleID8L') | e }}" id="moduleID8L"/>
-            </div>
-            <div id="igwgq18" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED8C"></button>
-              <label id="ii6n0i8" class="labelModuleID">8C</label>
-              <input type="text" placeholder="Module ID" name="moduleID8C" class="inputModuleID" value="{{ currentCONF.get('moduleID8C') | e }}" id="moduleID8C"/>
-            </div>
-            <div id="i535on8" class="gjs-cell form-row">
-              <button type="button" class="statusModuleID" id="LED8R"></button>
-              <label id="ic4bpb8" class="labelModuleID">8R</label>
-              <input type="text" placeholder="Module ID" name="moduleID8R" class="inputModuleID" value="{{ currentCONF.get('moduleID8R') | e }}" id="moduleID8R"/>
-            </div>
-          </div>
-        </div>
-      </form>
-      <!-- === New Dropdown Menu === -->
-      <div id="ii4kyn" class="gjs-row", style="width:100%">
-        <iframe
-            src="{{IVCurveOnline_URL}}"
-            style="width:100%; height:{{IVCurveOnline_height}}; border:none">
-        </iframe>
-      </div>
-    </div>
-  </section>
-  <script>
-    let statusPollInFlight = false;
-
-    async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        return await fetch(url, { ...options, signal: controller.signal });
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    }
-
-    const moduleDraftKey = 'task3ModuleIdDraft';
-
-    function moduleInputs() {
-      return document.querySelectorAll('#pymodule_configurations input[name^="moduleID"]');
-    }
-
-    function saveModuleDraft() {
-      const draft = {};
-      moduleInputs().forEach(input => {
-        draft[input.name] = input.value;
-      });
-      localStorage.setItem(moduleDraftKey, JSON.stringify(draft));
-    }
-
-    function restoreModuleDraft() {
-      const rawDraft = localStorage.getItem(moduleDraftKey);
-      if (!rawDraft) return;
-      try {
-        const draft = JSON.parse(rawDraft);
-        moduleInputs().forEach(input => {
-          if (Object.prototype.hasOwnProperty.call(draft, input.name)) {
-            input.value = draft[input.name];
-          }
-        });
-      } catch (error) {
-        console.warn('Module draft restore failed:', error);
-      }
-    }
-
-    function clearModuleDraft() {
-      localStorage.removeItem(moduleDraftKey);
-    }
-
-    async function updateStatus() {
-      if (statusPollInFlight) return;
-      statusPollInFlight = true;
-      let data;
-      try {
-        const response = await fetchWithTimeout('/task3/status');
-        data = await response.json();
-      } catch (error) {
-        console.warn('Status update failed:', error);
-        document.getElementById('statusText').innerText = 'server: status update failed';
-        return;
-      } finally {
-        statusPollInFlight = false;
-      }
-
-      const initBtn = document.getElementById('initBtn');
-      const confBtn = document.getElementById('confBtn');
-      const execBtn = document.getElementById('execBtn');
-      const autoTestBtn = document.getElementById('autoTestBtn');
-      const iv3TestBtn = document.getElementById('iv3TestBtn');
-      const stopBtn = document.getElementById('stopBtn');
-      const exitBtn = document.getElementById('exitBtn');
-      const clearModulesBtn = document.getElementById('clearModulesBtn');
-
-      // accept command only if jobmode is empty or task3
-      if (data.jobmode !== "" ) {
-        if (data.jobmode !== "task3") {
-          if ( data.status !== "startup" && data.status !== "destroyed" ) {
-            initBtn.disabled = true ;
-            confBtn.disabled = true ;
-            execBtn.disabled = true ;
-            autoTestBtn.disabled = true ;
-            iv3TestBtn.disabled = true ;
-            stopBtn.disabled = true ;
-            exitBtn.disabled = true ;
-            clearModulesBtn.disabled = true ;
-            document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true ; });
-            document.getElementById('statusText').innerText = "server is running other task";
-            return; // disable all buttons and returned
-          } } }
-      document.getElementById('statusText').innerText = `server: ${data.status}`;
-      const batchStatus = data.batchStatus || {};
-      const batchLines = [];
-      if (batchStatus.status) batchLines.push(`batch: ${batchStatus.status}`);
-      if (batchStatus.phase) batchLines.push(`phase: ${batchStatus.phase}`);
-      if (batchStatus.phase_state) batchLines.push(`phase_state: ${batchStatus.phase_state}`);
-      if (batchStatus.phase_summary) batchLines.push(batchStatus.phase_summary);
-      if (batchStatus.plc && batchStatus.plc.plc_status_text) batchLines.push(`plc: ${batchStatus.plc.plc_status_text}`);
-      if (batchStatus.plc && batchStatus.plc.min_dewpoint_C !== undefined) batchLines.push(`min dewpoint: ${batchStatus.plc.min_dewpoint_C} C`);
-      const batchHasCurrentError = batchStatus.status === 'error' || batchStatus.phase_state === 'error';
-      if (batchHasCurrentError && batchStatus.error_message) batchLines.push(`error: ${batchStatus.error_message}`);
-      if (batchStatus.updated_at) batchLines.push(`updated: ${batchStatus.updated_at}`);
-      document.getElementById('batchStatusText').innerText = batchLines.length ? batchLines.join('\n') : 'No auto batch status file yet.';
-
-      if (data.status === 'startup' ) {
-        initBtn.disabled = false;
-        confBtn.disabled = true ;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = false;
-        iv3TestBtn.disabled = false;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = true ;
-        clearModulesBtn.disabled = false;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-      if (data.status === 'initializing' ) {
-        initBtn.disabled = true ;
-        confBtn.disabled = true ;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
-        iv3TestBtn.disabled = true ;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = false;
-        clearModulesBtn.disabled = true ;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-      if (data.status === 'initialized' ) {
-        initBtn.disabled = true ;
-        confBtn.disabled = false;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = false;
-        iv3TestBtn.disabled = false;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = false;
-        clearModulesBtn.disabled = false;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-      if (data.status === 'configured' ) {
-        initBtn.disabled = true ;
-        confBtn.disabled = false;
-        execBtn.disabled = false;
-        autoTestBtn.disabled = false;
-        iv3TestBtn.disabled = false;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = false;
-        clearModulesBtn.disabled = false;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-      if (data.status === 'running' ) {
-        initBtn.disabled = true ;
-        confBtn.disabled = true ;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
-        iv3TestBtn.disabled = true ;
-        stopBtn.disabled = false;
-        exitBtn.disabled = false;
-        clearModulesBtn.disabled = true ;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = true; });
-      }
-      if (data.status === 'idle' ) {
-        initBtn.disabled = true ;
-        confBtn.disabled = false;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = false;
-        iv3TestBtn.disabled = false;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = false;
-        clearModulesBtn.disabled = false;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-      if (data.status === 'stopping' ) {
-        initBtn.disabled = true ;
-        confBtn.disabled = true ;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
-        iv3TestBtn.disabled = true ;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = false;
-        clearModulesBtn.disabled = true ;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-      if (data.status === 'stopped' ) {
-        initBtn.disabled = true ;
-        confBtn.disabled = false;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = false;
-        iv3TestBtn.disabled = false;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = false;
-        clearModulesBtn.disabled = false;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-      if (data.status === 'destroying' ) {
-        initBtn.disabled = true ;
-        confBtn.disabled = true ;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
-        iv3TestBtn.disabled = true ;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = true ;
-        clearModulesBtn.disabled = true ;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-      if (data.status === 'destroyed' ) {
-        initBtn.disabled = false;
-        confBtn.disabled = true ;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = false;
-        iv3TestBtn.disabled = false;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = true ;
-        clearModulesBtn.disabled = false;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-      if (data.status === 'error') {
-        initBtn.disabled = true ;
-        confBtn.disabled = true ;
-        execBtn.disabled = true ;
-        autoTestBtn.disabled = true ;
-        iv3TestBtn.disabled = true ;
-        stopBtn.disabled = true ;
-        exitBtn.disabled = false;
-        clearModulesBtn.disabled = false;
-        document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => { input.disabled = false; });
-      }
-
-      // === Populate dropdown with DAQres dynamically ===
-      const daqSelect = document.getElementById('daqSelect');
-      if (daqSelect) {
-        // Skip if more than 100 options already
-        if (daqSelect.options.length < 100) {
-          if (Array.isArray(data.DAQres)) {
-            data.DAQres.forEach(value => {
-              // Check if option already exists
-              let exists = false;
-              for (let i = 0; i < daqSelect.options.length; i++) {
-                if (daqSelect.options[i].value === value) {
-                  exists = true;
-                  break;
-                }
-              }
-              // Append only if missing
-              if (!exists) {
-                const opt = document.createElement("option");
-                opt.value = value;
-                opt.textContent = value;
-                daqSelect.appendChild(opt);
-                document.getElementById('daqNewOpt').innerText = value;
-              }
-            } );
-          } // end of data.DAQres is array
-          //  // Ensure DAQres is a string before processing
-          //  if (typeof data.DAQres === "string" && data.DAQres.trim() !== "") {
-          //    const value = data.DAQres.trim();
-          //    // Check if option already exists
-          //    let exists = false;
-          //    for (let i = 0; i < daqSelect.options.length; i++) {
-          //      if (daqSelect.options[i].value === value) {
-          //        exists = true;
-          //        break;
-          //      }
-          //    }
-
-          //    // Append only if missing
-          //    if (!exists) {
-          //      const opt = document.createElement("option");
-          //      opt.value = value;
-          //      opt.textContent = value;
-          //      daqSelect.appendChild(opt);
-          //      document.getElementById('daqNewOpt').innerText = value;
-          //    }
-          //  } // end of data.DAQres is string and is not empty
-        } // end of daqSelect.options.length < 100
-      } // end of if daqSelect
-    }
-
-    async function execjob(varname) {
-      const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
-      await fetchWithTimeout('/task3/'+varname, {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken  // <-- add this header
-        },
-        body: JSON.stringify({})
-      });
-      updateStatus();
-    }
+      </section>
+    </form>
 
 
+    <section class="card">
+      <h2>Live IV Curves</h2>
 
-    async function initJob() {  execjob('init'); document.getElementById('daqSelect').options.length=1; document.getElementById('daqNewOpt').innerText=""; }
-    async function execJob() { execjob('run'); }
-    async function autoTestJob() {
-      runBatchButton('autotest', 'AutoTest failed: ');
-    }
-    async function iv3TestJob() {
-      runBatchButton('iv3test', 'IV3 Test failed: ');
-    }
-    async function runBatchButton(routeName, errorPrefix) {
-      const form = document.getElementById('pymodule_configurations');
-      const formData = new FormData(form);
-      const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
-      const obj = {};
-      formData.forEach((value, key) => {
-        obj[key] = value;
-      });
-      try {
-        const response = await fetchWithTimeout('/task3/' + routeName, {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-          },
-          body: JSON.stringify(obj)
-        }, 30000);
-        if (!response.ok) {
-          const error = await response.json();
-          alert(errorPrefix + JSON.stringify(error));
-          return;
-        }
-        clearModuleDraft();
-      } catch (error) {
-        alert(errorPrefix + JSON.stringify(error));
-        return;
-      }
-      updateStatus();
-    }
-    async function stopJob() { execjob('stop'); }
-    async function exitJob() { execjob('destroy'); }
-    async function clearModuleNumbers() {
-      const password = prompt('Enter password to clear module numbers.\nPassword: IHEPhgcal');
-      if (password === null) return;
-      const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
-      try {
-        const response = await fetchWithTimeout('/task3/clear_modules', {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-          },
-          body: JSON.stringify({ password })
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          alert('Clear modules failed: ' + JSON.stringify(data.errors || data));
-          return;
-        }
-        moduleInputs().forEach(input => {
-          input.value = '';
-        });
-        clearModuleDraft();
-        updateStatus();
-      } catch (error) {
-        alert('Clear modules failed: ' + JSON.stringify(error));
-      }
-    }
-
-    moduleInputs().forEach(input => {
-      input.addEventListener('input', saveModuleDraft);
-    });
-    setInterval(updateStatus, 1000);  // Poll every second
-    window.onload = function() {
-      restoreModuleDraft();
-      updateStatus();
-    };
-  </script>
+      <iframe
+          src="{{IVCurveOnline_URL}}"
+          style="width:100%; height:{{IVCurveOnline_height}}; border:none">
+      </iframe>
+    </section>
+  </main>
 
   <script>
-    document.getElementById('confBtn').addEventListener('click', function() {
-      configureTask3(true);
-    });
-    async function configureTask3(showSuccessAlert) {
-      const form = document.getElementById('pymodule_configurations');
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return false;
+let statusPollInFlight = false;
+const moduleDraftKey = "task3ModuleIdDraft";
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function moduleInputs() {
+  return document.querySelectorAll(
+    '#pymodule_configurations input[name^="moduleID"]'
+  );
+}
+
+function saveModuleDraft() {
+  const draft = {};
+  moduleInputs().forEach((input) => {
+    draft[input.name] = input.value;
+  });
+  localStorage.setItem(moduleDraftKey, JSON.stringify(draft));
+}
+
+function restoreModuleDraft() {
+  const rawDraft = localStorage.getItem(moduleDraftKey);
+  if (!rawDraft) return;
+  try {
+    const draft = JSON.parse(rawDraft);
+    moduleInputs().forEach((input) => {
+      if (Object.prototype.hasOwnProperty.call(draft, input.name)) {
+        input.value = draft[input.name];
       }
+    });
+  } catch (error) {
+    console.warn("Module draft restore failed:", error);
+  }
+}
 
-      const formData = new FormData(form);
-      const csrfToken = document.querySelector('meta[name="csrf_token"]').getAttribute('content');
-      const obj = {};
-      console.info(formData);
-      formData.forEach((value, key) => {
-        obj[key] = value;
-      });
+function clearModuleDraft() {
+  localStorage.removeItem(moduleDraftKey);
+}
 
-      try {
-        const response = await fetchWithTimeout('/task3/submit', {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken  // <-- add this header
-        },
-        body: JSON.stringify(obj)
-        });
-        const data = await response.json();
-        if (!response.ok) throw data;
-        if (data.status === 'success') {
-          if (showSuccessAlert) alert(data.message);
+const STATUS_RULES = {
+  startup: {
+    init: false,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: true,
+    inputs: false,
+  },
+  initializing: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  initialized: {
+    init: true,
+    conf: false,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  configured: {
+    init: true,
+    conf: false,
+    exec: false,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  running: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: false,
+    exit: false,
+    inputs: true,
+  },
+  idle: {
+    init: true,
+    conf: false,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  stopping: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  stopped: {
+    init: true,
+    conf: false,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+  destroying: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: true,
+    inputs: false,
+  },
+  destroyed: {
+    init: false,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: true,
+    inputs: false,
+  },
+  error: {
+    init: true,
+    conf: true,
+    exec: true,
+    stop: true,
+    exit: false,
+    inputs: false,
+  },
+};
+
+function getCsrfToken() {
+  const token = document.querySelector('meta[name="csrf_token"]');
+  return token ? token.getAttribute("content") : "";
+}
+
+function getElements() {
+  return {
+    initBtn: document.getElementById("initBtn"),
+    confBtn: document.getElementById("confBtn"),
+    execBtn: document.getElementById("execBtn"),
+    stopBtn: document.getElementById("stopBtn"),
+    exitBtn: document.getElementById("exitBtn"),
+    statusText: document.getElementById("statusText"),
+    autoTestBtn: document.getElementById("autoTestBtn"),
+    iv3TestBtn: document.getElementById("iv3TestBtn"),
+    clearModulesBtn: document.getElementById("clearModulesBtn"),
+    inputs: document.querySelectorAll("#pymodule_configurations input.inputModuleID"),
+  };
+}
+
+function applyButtonState(rule, status) {
+  const elements = getElements();
+
+  elements.initBtn.disabled = rule.init;
+  elements.confBtn.disabled = rule.conf;
+  elements.execBtn.disabled = rule.exec;
+  elements.stopBtn.disabled = rule.stop;
+  elements.exitBtn.disabled = rule.exit;
+
+  const batchReady = ["startup", "initialized", "configured", "idle", "stopped", "destroyed"].includes(status);
+  const clearReady = batchReady || status === "error";
+  elements.autoTestBtn.disabled = !batchReady;
+  elements.iv3TestBtn.disabled = !batchReady;
+  elements.clearModulesBtn.disabled = !clearReady;
+
+  elements.inputs.forEach((input) => {
+    input.disabled = rule.inputs;
+  });
+}
+
+function disableAllForOtherTask() {
+  const elements = getElements();
+
+  elements.initBtn.disabled = true;
+  elements.confBtn.disabled = true;
+  elements.execBtn.disabled = true;
+  elements.stopBtn.disabled = true;
+  elements.exitBtn.disabled = true;
+  elements.autoTestBtn.disabled = true;
+  elements.iv3TestBtn.disabled = true;
+  elements.clearModulesBtn.disabled = true;
+
+  elements.inputs.forEach((input) => {
+    input.disabled = true;
+  });
+
+  elements.statusText.innerText = "server is running other task";
+}
+
+function updateDaqOptions(daqResults) {
+  const daqSelect = document.getElementById("daqSelect");
+  const daqNewOpt = document.getElementById("daqNewOpt");
+
+  if (!daqSelect || !Array.isArray(daqResults)) return;
+  if (daqSelect.options.length >= 100) return;
+
+  daqResults.forEach((value) => {
+    const exists = Array.from(daqSelect.options).some((opt) => opt.value === value);
+
+    if (!exists) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      daqSelect.appendChild(option);
+
+      if (daqNewOpt) {
+        daqNewOpt.innerText = value;
+      }
+    }
+  });
+}
+
+function updateBatchStatus(batchStatus = {}) {
+  const lines = [];
+  if (batchStatus.batch) lines.push(`batch: ${batchStatus.batch}`);
+  if (batchStatus.status) lines.push(`status: ${batchStatus.status}`);
+  if (batchStatus.phase) lines.push(`phase: ${batchStatus.phase}`);
+  if (batchStatus.phase_state) lines.push(`phase state: ${batchStatus.phase_state}`);
+  if (batchStatus.phase_summary) lines.push(batchStatus.phase_summary);
+  if (batchStatus.plc?.plc_status_text) lines.push(`PLC: ${batchStatus.plc.plc_status_text}`);
+  if (batchStatus.plc?.dewpoint_1_C !== undefined) lines.push(`dewpoint 1: ${batchStatus.plc.dewpoint_1_C} C`);
+  if (batchStatus.plc?.dewpoint_2_C !== undefined) lines.push(`dewpoint 2: ${batchStatus.plc.dewpoint_2_C} C`);
+  if (batchStatus.error_message) lines.push(`error: ${batchStatus.error_message}`);
+  if (batchStatus.updated_at) lines.push(`updated: ${batchStatus.updated_at}`);
+  document.getElementById("batchStatusText").innerText =
+    lines.length ? lines.join("\n") : "No auto batch status file yet.";
+}
+
+async function updateStatus() {
+  if (statusPollInFlight) return;
+  statusPollInFlight = true;
+  try {
+    const response = await fetchWithTimeout("/task3/status");
+    const data = await response.json();
+
+    if (
+      data.jobmode !== "" &&
+      data.jobmode !== "task3" &&
+      data.status !== "startup" &&
+      data.status !== "destroyed"
+    ) {
+      disableAllForOtherTask();
+      return;
+    }
+
+    document.getElementById("statusText").innerText = data.status;
+
+    const rule = STATUS_RULES[data.status];
+
+    if (rule) {
+      applyButtonState(rule, data.status);
+    }
+
+    updateBatchStatus(data.batchStatus);
+    updateDaqOptions(data.DAQres);
+  } catch (error) {
+    document.getElementById("statusText").innerText = "status fetch failed";
+    console.error(error);
+  } finally {
+    statusPollInFlight = false;
+  }
+}
+
+async function execjob(varname) {
+  await fetchWithTimeout(`/task3/${varname}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify({}),
+  });
+
+  updateStatus();
+}
+
+async function initJob() {
+  await execjob("init");
+
+  const daqSelect = document.getElementById("daqSelect");
+  const daqNewOpt = document.getElementById("daqNewOpt");
+
+  if (daqSelect) {
+    daqSelect.options.length = 1;
+  }
+
+  if (daqNewOpt) {
+    daqNewOpt.innerText = "";
+  }
+}
+
+async function execJob() {
+  execjob("run");
+}
+
+async function runBatchButton(routeName, errorPrefix) {
+  const formData = new FormData(
+    document.getElementById("pymodule_configurations")
+  );
+  const payload = {};
+  formData.forEach((value, key) => {
+    payload[key] = value;
+  });
+
+  try {
+    const response = await fetchWithTimeout(`/task3/${routeName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken(),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw await response.json();
+    }
+    clearModuleDraft();
+    await updateStatus();
+  } catch (error) {
+    alert(errorPrefix + JSON.stringify(error));
+  }
+}
+
+async function autoTestJob() {
+  await runBatchButton("autotest", "AutoTest failed: ");
+}
+
+async function iv3TestJob() {
+  await runBatchButton("iv3test", "IV3 Test failed: ");
+}
+
+async function stopJob() {
+  execjob("stop");
+}
+
+async function exitJob() {
+  execjob("destroy");
+}
+
+async function clearModuleNumbers() {
+  const password = prompt("Enter password to clear module numbers.");
+  if (password === null) return;
+
+  try {
+    const response = await fetchWithTimeout("/task3/clear_modules", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken(),
+      },
+      body: JSON.stringify({ password }),
+    });
+    if (!response.ok) {
+      throw await response.json();
+    }
+    moduleInputs().forEach((input) => {
+      input.value = "";
+    });
+    clearModuleDraft();
+    await updateStatus();
+  } catch (error) {
+    alert("Clear modules failed: " + JSON.stringify(error));
+  }
+}
+
+function setupConfigureButton() {
+  document.getElementById("confBtn").addEventListener("click", () => {
+    document
+      .getElementById("pymodule_configurations")
+      .dispatchEvent(new Event("submit", { cancelable: true }));
+  });
+}
+
+function setupFormSubmission() {
+  document.getElementById("pymodule_configurations").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    if (!this.checkValidity()) {
+      this.reportValidity();
+      return;
+    }
+
+    const formData = new FormData(this);
+    const obj = {};
+
+    formData.forEach((value, key) => {
+      obj[key] = value;
+    });
+
+    fetchWithTimeout("/task3/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken(),
+      },
+      body: JSON.stringify(obj),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then((err) => Promise.reject(err));
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        if (data.status === "success") {
+          alert(data.message);
           clearModuleDraft();
           updateStatus();
-          return true;
+        } else {
+          alert("Error: " + JSON.stringify(data.errors));
         }
-        alert('Error: ' + JSON.stringify(data.errors));
-      } catch (error) {
-        alert('Submission failed: ' + JSON.stringify(error));
-      }
-      return false;
-    }
-    document.getElementById('pymodule_configurations').addEventListener('submit', function(e) {
-      e.preventDefault();
-      configureTask3(true);
-    });
-  </script>
-  <script>
-    document.getElementById('daqSummaryBtn').addEventListener('click', function() {
-      const daqSelect = document.getElementById('daqSelect');
-      const selectedValue = daqSelect.value;
+      })
+      .catch((error) => {
+        alert("Submission failed: " + JSON.stringify(error));
+      });
+  });
+}
 
-      if (!selectedValue) {
-        alert("Please select a DAQ result first.");
+function setupDaqSummaryButton() {
+  const button = document.getElementById("daqSummaryBtn");
+
+  if (!button) return;
+
+  button.addEventListener("click", () => {
+    const daqSelect = document.getElementById("daqSelect");
+    const selectedValue = daqSelect.value;
+
+    if (!selectedValue) {
+      alert("Please select a DAQ result first.");
+      return;
+    }
+
+    window.open(`/daqsummary/gallery/${encodeURIComponent(selectedValue)}`, "_blank");
+  });
+}
+
+function setupInputRestriction() {
+  document
+    .querySelectorAll("#pymodule_configurations input.inputModuleID")
+    .forEach((input) => {
+      input.addEventListener("input", function () {
+        this.value = this.value
+          .toUpperCase()
+          .replace(/[^A-Z0-9\-]/g, "")
+          .slice(0, 20);
+        saveModuleDraft();
+      });
+    });
+}
+
+function setupMultiRowPaste() {
+  const moduleInputs = Array.from(
+    document.querySelectorAll(
+      "#pymodule_configurations input.inputModuleID"
+    )
+  );
+
+  moduleInputs.forEach((input, startIndex) => {
+    input.addEventListener("paste", function (event) {
+      const clipboard = event.clipboardData || window.clipboardData;
+
+      if (!clipboard) {
         return;
       }
 
-      // Build the link and navigate
-      const url = `/daqsummary/gallery/${encodeURIComponent(selectedValue)}`;
-      window.open(url, "_blank");
-    });
-  </script>
-  <script>
-    // input restriction. All input field in class inputMOduleID from form #pymodule_configurations allowed only digit and capital character and dash character. Length<20
-    document.querySelectorAll('#pymodule_configurations input.inputModuleID').forEach(input => {
-      input.addEventListener('input', function(e) {
-        this.value = this.value.toUpperCase().replace(/[^A-Z0-9\-]/g, '').slice(0, 20);
+      const pastedText = clipboard.getData("text");
+
+      /*
+       * Keep the browser's normal paste behavior when the clipboard
+       * contains only one value.
+       */
+      const rows = pastedText
+        .split(/\r\n|\r|\n/)
+        .filter((row) => row.trim() !== "");
+
+      if (rows.length <= 1) {
+        return;
+      }
+
+      event.preventDefault();
+
+      rows.forEach((row, offset) => {
+        const targetIndex = startIndex + offset;
+
+        if (targetIndex >= moduleInputs.length) {
+          return;
+        }
+
+        /*
+         * When pasting from Excel or a spreadsheet, use only the
+         * first column from each row.
+         */
+        const firstColumn = row.split("\t")[0];
+
+        const normalizedValue = firstColumn
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9\-]/g, "")
+          .slice(0, 20);
+        saveModuleDraft();
+
+        moduleInputs[targetIndex].value = normalizedValue;
+
+        /*
+         * Notify other listeners that the input changed.
+         */
+        moduleInputs[targetIndex].dispatchEvent(
+          new Event("input", {
+            bubbles: true,
+          })
+        );
       });
+
+      /*
+       * Move focus to the last field that received a value.
+       */
+      const lastIndex = Math.min(
+        startIndex + rows.length - 1,
+        moduleInputs.length - 1
+      );
+
+      moduleInputs[lastIndex].focus();
     });
-    //   document.getElementById('moduleID1L').addEventListener('input', function(e) {
-    //   this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
-    // });
+  });
+}
+document.addEventListener("DOMContentLoaded", () => {
+  restoreModuleDraft();
+  setupConfigureButton();
+  setupFormSubmission();
+  setupDaqSummaryButton();
+  setupInputRestriction();
+  setupMultiRowPaste();
+
+  updateStatus();
+  setInterval(updateStatus, 1000);
+});
+
+
   </script>
 </body>
 
-<style>* {
-box-sizing: border-box;
-}
-  body {
-    margin: 0;
-  }
-*{
-  box-sizing:border-box;
-}
-  .container-width{
-    width:90%;
-    max-width:1150px;
-    margin:0 auto;
-  }
-  .flex-sect{
-    padding:100px 0;
-    font-family:Helvetica, serif;
-  }
-  .flex-title{
-    margin-bottom:15px;
-    font-size:2em;
-    text-align:center;
-    font-weight:700;
-    padding:5px;
-  }
-  .cards{
-    padding:20px 0;
-    display:flex;
-    justify-content:space-around;
-    flex-flow:wrap;
-  }
-  #it8wd{
-    width:1000px;
-  }
-  .gjs-row{
-    display:flex;
-    justify-content:flex-start;
-    align-items:stretch;
-    flex-wrap:nowrap;
-    padding:10px;
-  }
-  .gjs-cell{
-    min-height:75px;
-    flex-grow:1;
-    flex-basis:100%;
-  }
-  #i1sqf{
-    flex-basis:70%;
-    min-height:76px;
-  }
-  #i5xn8{
-    flex-basis:30%;
-    min-height:0;
-  }
-  #idewg{
-    min-height:92px;
-  }
-  .autotest-row,
-  .manual-action-row{
-    display:flex;
-    gap:8px;
-    align-items:center;
-  }
-  .autotest-row{
-    margin-bottom:6px;
-  }
-  .ctrlbtn{
-    flex:1 1 0;
-    min-width:0;
-    height:30px;
-    margin:5px 0;
-  }
-  .auto-test-btn{
-    max-width:220px;
-    font-weight:700;
-  }
-  .batch-status-panel{
-    margin:10px 0 20px 0;
-    padding:12px 16px;
-    border:1px solid #2a3a7a;
-    border-radius:8px;
-    background:#0b1020;
-    color:#e7ecff;
-    box-shadow:0 1px 3px rgba(0, 0, 0, 0.28);
-  }
-  .batch-status-title{
-    font-weight:700;
-    margin-bottom:8px;
-    color:#e7ecff;
-  }
-  #batchStatusText{
-    white-space:pre-line;
-    font-family:Consolas, monospace;
-    line-height:1.5;
-    color:#e7ecff;
-  }
-  #statusText{
-    padding:0;
-  }
-  .server-status-line{
-    margin-bottom:8px;
-    color:#9fb0ff;
-    font-family:Consolas, monospace;
-    font-size:.9rem;
-  }
-  #i8wfow{
-    justify-content:flex-start;
-    flex-direction:row;
-    align-self:auto;
-    text-align:left;
-    float:none;
-    height:20px;
-    text-decoration:none;
-    margin:5px 5px 5px 0px;
-  }
-  #inta7e{
-    flex-basis:70%;
-    min-height:auto;
-  }
-  #iql44{
-    max-width:100%;
-    width:100%;
-    padding:0px 20px 0px 20px;
-  }
-  .labelModuleID{
-    float:none;
-    margin:0 5px 0px 5px;
-    padding:5px 0px 0px 0px;
-  }
-  .form-row{
-    min-height:auto;
-    height:40px;
-    width:200px;
-    flex-basis:250px;
-  }
-  .statusModuleID{
-    width:10px;
-    height:10px;
-    padding:0px 0px 0px 0px;
-    min-height:0px;
-    border-radius:5px 5px 0px 0px;
-    margin:0 10px 0 0;
-  }
-  #ig3nn{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #ipxwp{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #ipxwpa{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #ie7gk{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #im3fp{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #itton{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  .inputModuleID{
-    margin:5px 5px 5px 10px;
-    width:150px;
-  }
-  #ivnxle{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #ibmw1k{
-    max-width:100%;
-    width:100%;
-    padding:0px 20px 0px 20px;
-  }
-  #ij10l{
-    padding:10px 0px 10px 0px;
-    align-self:center;
-    display:flex;
-    height:100%;
-  }
-  #radioContainer{
-    margin:15px 0;
-  }
-  #iav7ih{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #ixp0rj{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i7v6dg{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i5oney{
-    max-width:100%;
-    width:100%;
-    padding:10px 20px 10px 20px;
-  }
-  #icpqsl{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #igwgq1{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i535on{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i55fvd{
-    max-width:100%;
-    width:100%;
-    padding:10px 20px 10px 20px;
-  }
-  #i0vy1u{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #ik8pqx{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i5qemj{
-    flex-basis:30%;
-    min-height:30px;
-  }
-  #iwfnx8{
-    flex-basis:70%;
-    min-height:30px;
-  }
-  #ii4kyn{
-    padding:10px 20px 10px 20px;
-  }
-  #i388gj{
-    justify-content:flex-start;
-    flex-direction:row;
-    align-self:auto;
-    text-align:left;
-    float:right;
-    height:20px;
-    text-decoration:none;
-    margin:5px 5px 5px 0px;
-  }
-  #daqSelect{
-    justify-content:flex-start;
-    float:right;
-    height:20px;
-    margin:5px 5px 5px 0;
-  }
-  #daqSummaryBtn{
-    justify-content:flex-start;
-    float:right;
-    height:20px;
-    margin:5px 5px 5px 0;
-  }
-  #ip1mvm{
-    justify-content:flex-start;
-    flex-direction:row;
-    align-self:auto;
-    text-align:left;
-    float:left;
-    height:20px;
-    text-decoration:none;
-    margin:5px 5px 5px 0px;
-  }
-  #itq9y3{
-    flex-basis:30%;
-    min-height:auto;
-  }
-  #iwgoh5{
-    justify-content:flex-start;
-    float:right;
-    height:20px;
-    margin:5px 5px 5px 0;
-  }
-  #i109v8{
-    justify-content:flex-start;
-    flex-direction:row;
-    align-self:auto;
-    text-align:left;
-    float:right;
-    height:20px;
-    text-decoration:none;
-    margin:5px 5px 5px 0px;
-  }
-  #daqNewOpt{
-    justify-content:flex-start;
-    flex-direction:row;
-    align-self:auto;
-    text-align:left;
-    float:left;
-    height:20px;
-    text-decoration:none;
-    margin:5px 5px 5px 0px;
-  }
-  #inxoou{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #iu3h3-2{
-    width:220px;
-  }
-  #i1t5o{
-    width:200px;
-  }
-  #i9wl5-2{
-    width:200px;
-  }
-  #i8peu-2{
-    width:200px;
-  }
-  #ikckl{
-    width:200px;
-  }
-  #i6hsb{
-    width:200px;
-  }
-  #iio4i{
-    width:200px;
-  }
-  #iy4ud{
-    width:200px;
-  }
-  #i5oney3{
-    max-width:100%;
-    width:100%;
-    padding:10px 20px 10px 20px;
-  }
-  #i5oney5{
-    max-width:100%;
-    width:100%;
-    padding:10px 20px 10px 20px;
-  }
-  #i5oney7{
-    max-width:100%;
-    width:100%;
-    padding:10px 20px 10px 20px;
-  }
 
-  #iav7ih3{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #iav7ih5{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #iav7ih7{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #ixp0rj3{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #ixp0rj5{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #ixp0rj7{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i7v6dg3{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i7v6dg5{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i7v6dg7{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-
-
-
-  #i55fvd4{
-    max-width:100%;
-    width:100%;
-    padding:10px 20px 10px 20px;
-  }
-  #i55fvd6{
-    max-width:100%;
-    width:100%;
-    padding:10px 20px 10px 20px;
-  }
-  #i55fvd8{
-    max-width:100%;
-    width:100%;
-    padding:10px 20px 10px 20px;
-  }
-  #icpqsl4{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #icpqsl6{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #icpqsl8{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #igwgq14{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #igwgq16{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #igwgq18{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i535on4{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i535on6{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  #i535on8{
-    width:250px;
-    padding:5px 5px 5px 5px;
-    justify-content:center;
-    display:flex;
-  }
-  @media (max-width: 768px){
-    .gjs-row{
-      flex-wrap:wrap;
-    }
-  }
-</style>
+</html>

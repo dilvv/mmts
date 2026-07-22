@@ -1,91 +1,121 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+<head>
   <meta charset="utf-8">
-  <head>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-    <title>Multimodule Teststand UI</title>
-    <script>
-      function confirmSelection() {
-        const selected = document.querySelector('input[name="option"]:checked');
-        if (!selected) { alert("Please select an option."); return; }
+  <title>Multimodule Teststand UI</title>
 
-        let iframeUrl;
-        // blueprint name + function name in blueprint
-        if (selected.value === "task1") { iframeUrl = "{{ url_for('app_task1.main') }}"; }
-        else if (selected.value === "task2") { iframeUrl = "{{ url_for('app_task2.main') }}"; }
-        else if (selected.value === "task3") { iframeUrl = "{{ url_for('app_task3.main') }}"; }
-        const iframe = document.getElementById("myIframe");
-        iframe.src = iframeUrl;
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        iframe.onload = function() {
-          try {
-            iframe.style.height = iframe.contentDocument.body.scrollHeight + 'px';
-          } catch(e) { 
-            console.warn('Cannot get height, use default 400px');
-            iframe.style.height = '400px';
-          }
-        }
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+</head>
 
-        // nofity server for optioin update.
-        fetch("/set_option",
-          {
-            method: "POST",
-            headers: {
-		"Content-Type": "application/json",
-		"X-CSRFToken": document.querySelector('meta[name="csrf-token"]').content
-	    },
-            body: JSON.stringify({ option: selected.value })
-          });
-      }
-    </script>
-    <script>
-    function adjustIframeHeight() {
-        const iframe = document.getElementById('myIframe');
-        if (iframe.contentWindow) {
-            // Get the height of the body of the iframe's document
-            const body = iframe.contentWindow.document.body;
-            const height = body.scrollHeight;
-    
-            // Set the height of the iframe
-            iframe.style.height = height + 'px';
-	    iframe.style.border = 0;
-            console.log("modify iframe height as " + height + "px");
-        }
-    }
-    </script>
-  </head>
-  <body>
-    <div class='container-width'>
-      <div style="width:100%">
-        <iframe
-            src="{{EnvMonitor_URL}}"
-            style="width:100%; height:{{EnvMonitor_height}}; border:none">
-        </iframe>
-      </div>
-    </div>
-    <div class='container-width'>
-      <h1>Select a job</h1>
+<body>
+  <main class="page">
+    <header class="page-header">
+      <h1>Multimodule Teststand UI</h1>
+    </header>
 
-      <form id="optionsForm">
-        <label> <input type="radio" name="option" value="task1" {% if selected_option == 'task1' %} checked {% endif %}> Single Pedestal Run </label>
-        <label> <input type="radio" name="option" value="task2" {% if selected_option == 'task2' %} checked {% endif %}> test region </label>
-        <label> <input type="radio" name="option" value="task3" {% if selected_option == 'task3' %} checked {% endif %}> IV scan </label>
-        <button type="button" onclick="confirmSelection()">Confirm</button>
+    <section class="card">
+      <h2>Environment Monitor</h2>
+
+      <iframe
+        class="env-frame"
+        src="{{ EnvMonitor_URL }}"
+        style="height: {{ EnvMonitor_height }};">
+      </iframe>
+    </section>
+
+    <section class="card">
+      <h2>Select a Job</h2>
+
+      <form id="optionsForm" class="job-form">
+        <label class="job-option">
+          <input
+            type="radio"
+            name="option"
+            value="task1"
+            {% if selected_option == 'task1' %}checked{% endif %}>
+          <span>Single Pedestal Run</span>
+        </label>
+
+        <label class="job-option">
+          <input
+            type="radio"
+            name="option"
+            value="task2"
+            {% if selected_option == 'task2' %}checked{% endif %}>
+          <span>IV Scan</span>
+        </label>
+
+        <label class="job-option">
+          <input
+            type="radio"
+            name="option"
+            value="task3"
+            {% if selected_option == 'task3' %}checked{% endif %}>
+          <span>OLD IV Scan OLD</span>
+        </label>
+
+        <button type="button" class="primary-btn" onclick="confirmSelection()">
+          Confirm
+        </button>
       </form>
+    </section>
 
-      <iframe id="myIframe" width="100%" onload="adjustIframeHeight()"
-                                           src="{% if selected_option == 'task1' %}{{ url_for('app_task1.main') }}{% elif selected_option == 'task2' %}{{ url_for('app_task2.main') }}{% elif selected_option == 'task3' %}{{ url_for('app_task3.main') }}{% endif %}"></iframe>
-    </div>
+    <section class="card">
 
-  </body>
+      <iframe
+        id="myIframe"
+        class="task-frame"
+        onload="adjustIframeHeight()"
+        src="{% if selected_option == 'task1' %}{{ url_for('app_task1.main') }}{% elif selected_option == 'task2' %}{{ url_for('app_task2.main') }}{% elif selected_option == 'task3' %}{{ url_for('app_task3.main') }}{% endif %}">
+      </iframe>
+    </section>
+  </main>
+
+  <script>
+    const TASK_URLS = {
+      task1: "{{ url_for('app_task1.main') }}",
+      task2: "{{ url_for('app_task2.main') }}",
+      task3: "{{ url_for('app_task3.main') }}"
+    };
+
+    function getCsrfToken() {
+      return document.querySelector('meta[name="csrf-token"]').content;
+    }
+
+    function confirmSelection() {
+      const selected = document.querySelector('input[name="option"]:checked');
+
+      if (!selected) {
+        alert("Please select an option.");
+        return;
+      }
+
+      const iframe = document.getElementById("myIframe");
+      iframe.src = TASK_URLS[selected.value];
+
+      fetch("/set_option", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCsrfToken()
+        },
+        body: JSON.stringify({ option: selected.value })
+      });
+    }
+
+    function adjustIframeHeight() {
+      const iframe = document.getElementById("myIframe");
+
+      try {
+        const body = iframe.contentWindow.document.body;
+        iframe.style.height = body.scrollHeight + "px";
+      } catch (error) {
+        console.warn("Cannot access iframe height. Using default height.");
+        iframe.style.height = "700px";
+      }
+    }
+  </script>
+</body>
 </html>
-<style>
-  .container-width{
-    width: 1200px;
-    height: 100%;
-    margin:0 auto 0 auto;
-  }
-</style>
-
-

@@ -5,16 +5,17 @@ from flask import Flask, render_template, request, jsonify, Blueprint
 from flask import current_app
 from flask_wtf import FlaskForm
 from flask_wtf.csrf import CSRFProtect
-from wtforms.validators import DataRequired, Regexp, InputRequired, NumberRange
+from wtforms.validators import DataRequired, Regexp, InputRequired, NumberRange, AnyOf
 from wtforms import StringField, SubmitField, RadioField, IntegerField
 import flask_apps.shared_state as shared_state
 from PythonTools.batch_status import read_status, update_status
 from PythonTools.server_status import isCommandRunable
+from datetime import datetime
 import re
 import os
+import signal
 import sys
 import yaml
-import signal
 ### HTTP status codes https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
 
 JOBMODE = 'task3' # IV scan
@@ -32,20 +33,32 @@ except FileNotFoundError as e:
 mmtsCONF = 'data/mmts_configurations.yaml'
 external_URL = ''
 external_URL_height = '200px'
+thermalcycle_iterations = {}
 try:
     with open(mmtsCONF, 'r') as fIN:
         import yaml
         conf = yaml.safe_load(fIN)
         external_URL = conf['externalURL']['IVCurveOnline']['URL']
         external_URL_height = conf['externalURL']['IVCurveOnline']['height']
+        thermalcycle_iterations = conf.get('thermalcycle_iterations', {
+            'iteration_1': 'iteration_1: room condition, high humidity',
+            'iteration_2': 'iteration_2: first low temperature',
+            'iteration_3': 'iteration_3: last low temperature',
+            'iteration_4': 'iteration_4: final IV, normal temperature',
+        })
+
+
 except FileNotFoundError as e:
     raise FileNotFoundError(f'\n\n[LackOfMMTSconf] Need to create configuration file "data/mmts_configuration.yaml"') from e
 
+### intrinsic configuration would be defined in flask server instead of user input
+INTRINSIC_CONF = [ 'batch' ]
 CONF_DICT = {
-        'currentHUMIDITY': '',
+        'batch': '',    # YYYYMMDD-HHMMSS
+        'currentHUMIDITY': '', # 0~100
         'currentTEMPERATURE': '',
-       #'inspector': '',    ### not used
-       #'moduleSTATUS': '', ### not used
+        'iteration': '', # batch1
+        'maxVOLTAGE': '', # 500 or 850
         'moduleID1L': '',
         'moduleID1C': '',
         'moduleID1R': '',
@@ -76,6 +89,7 @@ CONF_DICT = {
 
 def ExecCMD(jobID:str, confDICT:dict):
     make_command = 'make -n' if shared_state.debug_mode else 'make'
+   #make_command = 'make -n'
     if jobID == 'Init':
         return f'{make_command} -f makefile_task3 initialize JobName=Init'
     if jobID == 'Run':
@@ -83,13 +97,8 @@ def ExecCMD(jobID:str, confDICT:dict):
         runTAG = f'run{shared_state.runidx}'
         dictOPTs = ' '.join([ f'{key}={val}' for key,val in confDICT.items() if val != '' ])
 
-        ### a patch
-        if int(confDICT['currentHUMIDITY']) < 12.0:
-            dictOPTs += ' maxVOLTAGE=850'
-        else:
-            dictOPTs += ' maxVOLTAGE=500'
         ### a patch END
-        return f'{make_command} -f makefile_task3 run ' + dictOPTs
+        return f'{make_command} -f makefile_task3  run ' + dictOPTs
     if jobID == 'Stop':
         return f'{make_command} -f makefile_task3 stop JobName=Stop'
     if jobID == 'Destroy':
@@ -98,22 +107,44 @@ def ExecCMD(jobID:str, confDICT:dict):
 
 def module_ids_from_conf(confDICT:dict):
     return {
-        key.replace('moduleID', ''): val
-        for key, val in confDICT.items()
+        key.replace('moduleID', ''): value
+        for key, value in confDICT.items()
         if key.startswith('moduleID')
     }
 
 
+def new_batch_id():
+    return datetime.now().strftime('%Y%m%d-%H%M%S')
+
+
+def save_module_ids_from_json(json_data:dict):
+    if not json_data:
+        return False, {'message': 'Missing JSON data'}
+
+    form = ConfigForm(data=json_data)
+    for key in CONF_DICT:
+        if not key.startswith('moduleID'):
+            continue
+        field = getattr(form, key)
+        if not field.validate(form):
+            return False, {key: field.errors}
+        value = re.sub(r'[^A-Za-z0-9\-]+', '', str(field.data or ''))
+        if len(value) > 20:
+            return False, {key: ['Module ID must be at most 20 characters.']}
+        CONF_DICT[key] = value
+    return True, {}
+
+
 def build_autotest_config(confDICT:dict):
-    config_template = 'data/full_batch_config.example.yml'
     runtime_dir = os.path.join('tmp_files', 'runtime')
     os.makedirs(runtime_dir, exist_ok=True)
     runtime_config = os.path.join(runtime_dir, 'full_batch_web.yml')
 
-    with open(config_template, 'r', encoding='utf-8') as fin:
+    with open('data/full_batch_config.example.yml', 'r', encoding='utf-8') as fin:
         cfg = yaml.safe_load(fin)
-
     cfg['module_ids'] = module_ids_from_conf(confDICT)
+    cfg['batch'] = new_batch_id()
+
     with open(runtime_config, 'w', encoding='utf-8') as fout:
         yaml.safe_dump(cfg, fout, sort_keys=False)
     return runtime_config
@@ -123,54 +154,22 @@ def build_batch_iv_command(scan_name:str, confDICT:dict):
     with open('data/full_batch_config.example.yml', 'r', encoding='utf-8') as fin:
         cfg = yaml.safe_load(fin)
     scan_cfg = cfg['iv_scans'][scan_name]
-    opts = []
-    for position, module_id in module_ids_from_conf(confDICT).items():
-        if module_id:
-            opts.append(f'moduleID{position}={module_id}')
-    opts.append(f"currentTEMPERATURE={scan_cfg['temperature']}")
-    opts.append(f"currentHUMIDITY={scan_cfg['humidity']}")
-    opts.append(f"maxVOLTAGE={scan_cfg['max_voltage']}")
+    batch_id = new_batch_id()
+    CONF_DICT['batch'] = batch_id
+    CONF_DICT['iteration'] = scan_cfg['iteration']
+    opts = [
+        f'moduleID{position}={module_id}'
+        for position, module_id in module_ids_from_conf(confDICT).items()
+        if module_id
+    ]
+    opts.extend([
+        f"currentTEMPERATURE={scan_cfg['temperature']}",
+        f"currentHUMIDITY={scan_cfg['humidity']}",
+        f"maxVOLTAGE={scan_cfg['max_voltage']}",
+        f"iteration={scan_cfg['iteration']}",
+        f"batch={batch_id}",
+    ])
     return 'make -f makefile_task3 initialize && make -f makefile_task3 run ' + ' '.join(opts)
-
-
-def save_config_from_json(json_data:dict, require_run_fields=True):
-    if not json_data:
-        return False, {'message': 'Missing JSON data'}
-
-    form = ConfigForm(data=json_data)
-    if require_run_fields and not form.validate_on_submit():
-        errors = {}
-        for fieldName, errorMessages in form.errors.items():
-            errors[fieldName] = errorMessages
-        return False, errors
-    if not require_run_fields:
-        for field in [
-            form.moduleID1L, form.moduleID1C, form.moduleID1R,
-            form.moduleID2L, form.moduleID2C, form.moduleID2R,
-            form.moduleID3L, form.moduleID3C, form.moduleID3R,
-            form.moduleID4L, form.moduleID4C, form.moduleID4R,
-            form.moduleID5L, form.moduleID5C, form.moduleID5R,
-            form.moduleID6L, form.moduleID6C, form.moduleID6R,
-            form.moduleID7L, form.moduleID7C, form.moduleID7R,
-            form.moduleID8L, form.moduleID8C, form.moduleID8R,
-        ]:
-            if not field.validate(form):
-                return False, {field.name: field.errors}
-
-    def ignore_special_characters(string):
-        return re.sub(r'[^A-Za-z0-9\-]+', '', string) if string else ''
-
-    for varname in CONF_DICT.keys():
-        value = getattr(form, varname).data if hasattr(form, varname) else ''
-        clean_val = ignore_special_characters(str(value))
-        if len(clean_val) > 20:
-            clean_val = ''
-        CONF_DICT[varname] = clean_val
-
-    is_empty_dict = sum(1 if v else 0 for _, v in CONF_DICT.items()) == 0
-    if is_empty_dict:
-        return False, 'Got empty configurations!'
-    return True, {}
 
 
 
@@ -216,14 +215,7 @@ job_thread = {
         'Stop': None,
         'Destroy': None,
         }
-job_process = {
-        'Init': None,
-        'Run': None,
-        'AutoTest': None,
-        'IV3Test': None,
-        'Stop': None,
-        'Destroy': None,
-        }
+job_process = {name: None for name in job_thread}
 
 
 def terminate_process(process, jobID):
@@ -236,8 +228,8 @@ def terminate_process(process, jobID):
         else:
             process.terminate()
         process.wait(timeout=5)
-    except Exception as e:
-        logger.warning(f'[{jobID}][Terminate] graceful termination failed: {e}')
+    except Exception as error:
+        logger.warning(f'[{jobID}][Terminate] graceful termination failed: {error}')
         try:
             if os.name == 'posix':
                 os.killpg(process.pid, signal.SIGKILL)
@@ -257,12 +249,11 @@ def stop_running_jobs(jobIDs):
 
 def join_job_threads(jobIDs, timeout=10):
     for jobID in jobIDs:
-        t = job_thread.get(jobID)
-        if t and t.is_alive():
-            t.join(timeout=timeout)
-            if t.is_alive():
+        thread = job_thread.get(jobID)
+        if thread and thread.is_alive():
+            thread.join(timeout=timeout)
+            if thread.is_alive():
                 logger.warning(f'[{jobID}][JoinTimeout] thread still alive after {timeout}s')
-
 
 def set_thread(runTYPE, tHREAD:threading.Thread):
     if runTYPE not in job_thread:
@@ -270,7 +261,6 @@ def set_thread(runTYPE, tHREAD:threading.Thread):
         logger.warning(f'[InvalidRunType] set_thread() add "{runTYPE}" in the threading pool')
 
     if job_thread[runTYPE] and job_thread[runTYPE].is_alive():
-        #logger.warning(f'[JobIsRunning] set_thread() got running thread. overwrite this running thread')
         logger.warning(f'[JobIsRunning] set_thread() got running thread. waiting for previous thread finished')
         job_thread[runTYPE].join()
 
@@ -394,15 +384,23 @@ def Init():
 
     return '', 204
 
-alphanumeric_validator = Regexp(r"^[a-zA-Z0-9\-]*$", message="Only letters and numbers and dash allowed.")
+alphanumeric_validator = Regexp(r"^[a-zA-Z0-9-]*$", message="Only letters and numbers and dash allowed.")
 #alphanumeric_validator = Regexp("^[a-zA-Z0-9]*$", message="Only letters and numbers allowed.")
 class ConfigForm(FlaskForm):
-    currentTEMPERATURE = StringField("currentTEMPERATURE", validators=[InputRequired(message='Temperature Missing')])
+   #currentTEMPERATURE = StringField("currentTEMPERATURE", validators=[InputRequired(message='Temperature Missing')])
+    currentTEMPERATURE = IntegerField("currentTEMPERATURE", validators=[
+        NumberRange(min=-50.,max=50., message='Number from -50 to 50'),
+        InputRequired(message='Temperature Missing')]
+                                     )
    #moduleSTATUS = RadioField("moduleSTATUS", validators=[InputRequired()])
     currentHUMIDITY    = IntegerField("currentHUMIDITY"   , validators=[
         NumberRange(min=0.,max=100., message='Number from 0 to 100'),
         InputRequired(message='Humidity Missing')]
                                      )
+    maxVOLTAGE = StringField("maxVOLTAGE", validators=[InputRequired(message='Max Voltage Missing')])
+    iteration  = StringField("iteration"   , validators=[InputRequired(message='select an iteration'),
+                                                       AnyOf(values=thermalcycle_iterations.keys(), message=f"Invalid choice, available choices '{thermalcycle_iterations.keys()}'")
+                                                      ])
 
     moduleID1L = StringField("moduleID1L", validators=[alphanumeric_validator])
     moduleID1C = StringField("moduleID1C", validators=[alphanumeric_validator])
@@ -443,7 +441,7 @@ def Configure():
 
 
     json_data = request.get_json()
-    
+
     print('\n\n\n',json_data,'\n\n\n')
     if not json_data:
         return jsonify({'status': 'error', 'message': 'Missing JSON data'}), 400
@@ -474,6 +472,8 @@ def Configure():
     current_app.logger.debug(f'[LoadFormFromClient] Form "{vars(form)}"')
 
     for varname in CONF_DICT.keys():
+        if varname in INTRINSIC_CONF: continue ## pass some variable not from configuration
+
         value = getattr(form, varname).data if hasattr(form, varname) else ''
         current_app.logger.debug(f'[GotValue] Form {varname} got original value "{value}"')
         clean_val = ignore_special_characters(str(value))
@@ -481,20 +481,31 @@ def Configure():
             current_app.logger.warning(f'[InputTooLong] Input {varname}:{clean_val} too long, resetting.')
             clean_val = ''
         CONF_DICT[varname] = clean_val
+
+        if varname == 'iteration': ## add date as postfix
+            now = datetime.now()
+            CONF_DICT['batch'] = now.strftime("%Y%m%d-%H%M%S")
+
+
         current_app.logger.debug(f'[UpdateConfigure] Input {varname}:{CONF_DICT[varname]} updated.')
 
 
-    conf_mesg = lambda d: f'''Configurations\n
-1L:{d.get('moduleID1L', ''):16s} 1C:{d.get('moduleID1C', ''):16s} 1R:{d.get('moduleID1R', ''):16s}\n
-2L:{d.get('moduleID2L', ''):16s} 2C:{d.get('moduleID2C', ''):16s} 2R:{d.get('moduleID2R', ''):16s}\n
-3L:{d.get('moduleID3L', ''):16s} 3C:{d.get('moduleID3C', ''):16s} 3R:{d.get('moduleID3R', ''):16s}\n
-4L:{d.get('moduleID4L', ''):16s} 4C:{d.get('moduleID4C', ''):16s} 4R:{d.get('moduleID4R', ''):16s}\n
-5L:{d.get('moduleID5L', ''):16s} 5C:{d.get('moduleID5C', ''):16s} 5R:{d.get('moduleID5R', ''):16s}\n
-6L:{d.get('moduleID6L', ''):16s} 6C:{d.get('moduleID6C', ''):16s} 6R:{d.get('moduleID6R', ''):16s}\n
-7L:{d.get('moduleID7L', ''):16s} 7C:{d.get('moduleID7C', ''):16s} 7R:{d.get('moduleID7R', ''):16s}\n
-8L:{d.get('moduleID8L', ''):16s} 8C:{d.get('moduleID8C', ''):16s} 8R:{d.get('moduleID8R', ''):16s}\n
-Note: Configuration saved. Please verify the settings.
-    '''
+    def conf_mesg(d):
+        input_modules = [ moduleID for dict_key, moduleID in d.items() if moduleID and 'moduleID' in dict_key ]
+        moduleID_set = set()
+        duplicates = set(x for x in input_modules if x in moduleID_set or moduleID_set.add(x))
+
+        got_n_modules = len(input_modules)
+
+        has_duplicate_moduleID = len(duplicates) != 0
+        check1_mesg = f'\nHOWEVER duplicate modules:\n  {duplicates}' if has_duplicate_moduleID else '\nNo duplicate module'
+
+
+        return f'''
+got {got_n_modules} modules.
+{check1_mesg}
+'''
+
 
 
     is_empty_dict = sum( 1  if v else 0 for _,v in CONF_DICT.items()) == 0
@@ -508,28 +519,51 @@ Note: Configuration saved. Please verify the settings.
 
     set_server_status('configured')
     # Return JSON with message, status 200 so client JS can alert
-    return jsonify({'status': 'success', 'message': conf_mesg(CONF_DICT).replace('  ','__')}), 200
+    return jsonify({'status': 'success', 'message': conf_mesg(CONF_DICT)}), 200
+
+
+def auto_destroy_after_failure(status_path, phase, reason):
+    logger.warning(f'[{phase}] {reason}; running destroy automatically.')
+    update_status({
+        'status': 'destroying',
+        'phase': phase,
+        'phase_state': 'destroying',
+        'phase_summary': f'{reason}; running destroy automatically.',
+    }, path=status_path)
+
+    job_stop_flags['Destroy'].clear()
+    set_server_status('destroying')
+    destroy_returncode = run_command(ExecCMD('Destroy', CONF_DICT), 'Destroy')
+    destroyed = destroy_returncode == 0
+    set_server_status('destroyed' if destroyed else 'error')
+    update_status({
+        'status': 'destroyed' if destroyed else 'error',
+        'phase': phase,
+        'phase_state': 'destroyed' if destroyed else 'error',
+        'phase_summary': f'{reason}; destroy command finished.',
+    }, path=status_path)
+    return destroy_returncode
 
 
 @app.route('/clear_modules', methods=['POST'])
 def ClearModules():
-    CMD_ID = 'ClearModules'
-    current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got a {CMD_ID} command')
-    if not check_jobmode(): return '', 204
+    if not check_jobmode():
+        return '', 204
 
     json_data = request.get_json() or {}
     if json_data.get('password') != 'IHEPhgcal':
         return jsonify({'status': 'error', 'errors': 'Wrong password.'}), 403
 
-    if shared_state.server_status not in ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed', 'error']:
+    allowed_statuses = ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed', 'error']
+    if shared_state.server_status not in allowed_statuses:
         return jsonify({
             'status': 'error',
             'errors': f'Cannot clear module numbers while server status is {shared_state.server_status}.',
         }), 409
 
-    for varname in CONF_DICT.keys():
-        if varname.startswith('moduleID'):
-            CONF_DICT[varname] = ''
+    for key in CONF_DICT:
+        if key.startswith('moduleID'):
+            CONF_DICT[key] = ''
     current_app.logger.info(f'[ClearModules] Module IDs cleared. Current CONF_DICT: {CONF_DICT}')
     return jsonify({'status': 'success'}), 200
 
@@ -571,143 +605,117 @@ def Run():
 
 @app.route('/autotest', methods=['POST'])
 def AutoTest():
-    ''' run formal full-batch automation from the current web configuration '''
     CMD_ID = 'AutoTest'
-    current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got an {CMD_ID} command')
-    if not check_jobmode(): return '', 204
+    if not check_jobmode():
+        return '', 204
 
-    ok, errors = save_config_from_json(request.get_json(), require_run_fields=False)
+    ok, errors = save_module_ids_from_json(request.get_json())
     if not ok:
-        current_app.logger.warning(f'[AutoTest] Validation errors: {errors}')
         return jsonify({'status': 'error', 'errors': errors}), 400
-    current_app.logger.info(f'[AutoTest] Current CONF_DICT: {CONF_DICT}')
 
-    job_stop_flags[CMD_ID].clear()
-    if shared_state.server_status in ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']:
-        populated_modules = {k: v for k, v in module_ids_from_conf(CONF_DICT).items() if v}
-        if not populated_modules:
-            return jsonify({'status': 'error', 'errors': 'No module IDs configured for AutoTest.'}), 400
-
-        set_server_status('running')
-        current_app.logger.debug(f'[ServerAction][{CMD_ID}] activate AutoTest command')
-
-        def background_worker():
-            try:
-                config_path = build_autotest_config(CONF_DICT)
-                status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
-                command = (
-                    f'{sys.executable} scripts/run_full_mmts_batch.py '
-                    f'-c {config_path} --status-file {status_path}'
-                )
-                returncode = run_command(command, CMD_ID)
-                if returncode != 0 and not job_stop_flags[CMD_ID].is_set():
-                    batch_status = read_status(path=status_path)
-                    phase = str(batch_status.get('phase', 'unknown'))
-                    logger.warning(f'[AutoTest] AutoTest failed with exit code {returncode} at {phase}; running destroy automatically.')
-                    update_status({
-                        'status': 'error',
-                        'phase_state': 'destroying',
-                        'phase_summary': f'AutoTest failed with exit code {returncode}; running destroy automatically.',
-                    }, path=status_path)
-                    set_server_status('destroying')
-                    destroy_returncode = run_command(ExecCMD('Destroy', CONF_DICT), 'Destroy')
-                    if destroy_returncode == 0:
-                        set_server_status('destroyed')
-                    update_status({
-                        'status': 'destroyed' if destroy_returncode == 0 else 'error',
-                        'phase_state': 'destroyed' if destroy_returncode == 0 else 'error',
-                        'phase_summary': 'AutoTest failed; destroy command finished.',
-                    }, path=status_path)
-            finally:
-                if shared_state.server_status not in ['error', 'destroyed', 'destroying']:
-                    set_server_status('idle')
-                logger.info("AutoTest job status set to idle.")
-            logger.info('AutoTest background worker ended')
-
-        t = threading.Thread(target=background_worker)
-        t.start()
-        set_thread(CMD_ID, t)
-    else:
-        current_app.logger.debug(f'[ServerAction][{CMD_ID}] Current status is {shared_state.server_status}. reject "{CMD_ID}" command')
+    allowed_statuses = ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']
+    if shared_state.server_status not in allowed_statuses:
         return jsonify({
             'status': 'error',
             'errors': f'Cannot start AutoTest while server status is {shared_state.server_status}.',
         }), 409
+    if not any(module_ids_from_conf(CONF_DICT).values()):
+        return jsonify({'status': 'error', 'errors': 'No module IDs configured for AutoTest.'}), 400
 
+    job_stop_flags[CMD_ID].clear()
+    set_server_status('running')
+
+    def background_worker():
+        status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
+        try:
+            config_path = build_autotest_config(CONF_DICT)
+            command = (
+                f'{sys.executable} scripts/run_full_mmts_batch.py '
+                f'-c {config_path} --status-file {status_path}'
+            )
+            returncode = run_command(command, CMD_ID)
+            if returncode != 0 and not job_stop_flags[CMD_ID].is_set():
+                batch_status = read_status(path=status_path)
+                phase = str(batch_status.get('phase', 'autotest'))
+                auto_destroy_after_failure(
+                    status_path,
+                    phase,
+                    f'AutoTest failed with exit code {returncode}',
+                )
+        except Exception as error:
+            logger.exception('[AutoTest] unexpected failure')
+            if not job_stop_flags[CMD_ID].is_set():
+                auto_destroy_after_failure(status_path, 'autotest', f'AutoTest failed: {error}')
+        finally:
+            if shared_state.server_status not in ['error', 'destroyed', 'destroying']:
+                set_server_status('idle')
+
+    thread = threading.Thread(target=background_worker)
+    thread.start()
+    set_thread(CMD_ID, thread)
     return '', 204
 
 
 @app.route('/iv3test', methods=['POST'])
 def IV3Test():
-    ''' run only the third formal IV scan from the current web configuration '''
     CMD_ID = 'IV3Test'
-    current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got an {CMD_ID} command')
-    if not check_jobmode(): return '', 204
+    if not check_jobmode():
+        return '', 204
 
-    ok, errors = save_config_from_json(request.get_json(), require_run_fields=False)
+    ok, errors = save_module_ids_from_json(request.get_json())
     if not ok:
-        current_app.logger.warning(f'[IV3Test] Validation errors: {errors}')
         return jsonify({'status': 'error', 'errors': errors}), 400
 
-    if shared_state.server_status in ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']:
-        populated_modules = {k: v for k, v in module_ids_from_conf(CONF_DICT).items() if v}
-        if not populated_modules:
-            return jsonify({'status': 'error', 'errors': 'No module IDs configured for IV3Test.'}), 400
-
-        job_stop_flags[CMD_ID].clear()
-        set_server_status('running')
-        current_app.logger.debug(f'[ServerAction][{CMD_ID}] activate IV3Test command')
-
-        def background_worker():
-            status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
-            try:
-                update_status({
-                    'status': 'running',
-                    'phase': 'iv3_manual',
-                    'phase_state': 'running',
-                    'phase_summary': 'Running manual third IV test from web button.',
-                }, path=status_path)
-                returncode = run_command(build_batch_iv_command('iv3', CONF_DICT), CMD_ID)
-                if returncode == 0:
-                    update_status({
-                        'status': 'completed',
-                        'phase': 'iv3_manual',
-                        'phase_state': 'completed',
-                        'phase_summary': 'Manual third IV test completed.',
-                    }, path=status_path)
-                elif not job_stop_flags[CMD_ID].is_set():
-                    update_status({
-                        'status': 'destroying',
-                        'phase': 'iv3_manual',
-                        'phase_state': 'failed',
-                        'phase_summary': 'Manual third IV test failed; running destroy automatically.',
-                    }, path=status_path)
-                    set_server_status('destroying')
-                    destroy_returncode = run_command(ExecCMD('Destroy', CONF_DICT), 'Destroy')
-                    update_status({
-                        'status': 'destroyed' if destroy_returncode == 0 else 'error',
-                        'phase': 'iv3_manual',
-                        'phase_state': 'failed',
-                        'phase_summary': 'Manual third IV test failed; destroy command finished.',
-                    }, path=status_path)
-                    if destroy_returncode == 0:
-                        set_server_status('destroyed')
-            finally:
-                if shared_state.server_status not in ['error', 'destroyed', 'destroying']:
-                    set_server_status('idle')
-                logger.info("IV3Test job status set to idle.")
-            logger.info('IV3Test background worker ended')
-
-        t = threading.Thread(target=background_worker)
-        t.start()
-        set_thread(CMD_ID, t)
-    else:
-        current_app.logger.debug(f'[ServerAction][{CMD_ID}] Current status is {shared_state.server_status}. reject "{CMD_ID}" command')
+    allowed_statuses = ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']
+    if shared_state.server_status not in allowed_statuses:
         return jsonify({
             'status': 'error',
             'errors': f'Cannot start IV3Test while server status is {shared_state.server_status}.',
         }), 409
+    if not any(module_ids_from_conf(CONF_DICT).values()):
+        return jsonify({'status': 'error', 'errors': 'No module IDs configured for IV3Test.'}), 400
 
+    job_stop_flags[CMD_ID].clear()
+    set_server_status('running')
+
+    def background_worker():
+        status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
+        try:
+            update_status({
+                'status': 'running',
+                'phase': 'iv3_manual',
+                'phase_state': 'running',
+                'phase_summary': 'Running manual third IV test from web button.',
+            }, path=status_path)
+            returncode = run_command(build_batch_iv_command('iv3', CONF_DICT), CMD_ID)
+            if returncode == 0:
+                update_status({
+                    'status': 'completed',
+                    'phase': 'iv3_manual',
+                    'phase_state': 'completed',
+                    'phase_summary': 'Manual third IV test completed.',
+                }, path=status_path)
+            elif not job_stop_flags[CMD_ID].is_set():
+                auto_destroy_after_failure(
+                    status_path,
+                    'iv3_manual',
+                    f'Manual third IV test failed with exit code {returncode}',
+                )
+        except Exception as error:
+            logger.exception('[IV3Test] unexpected failure')
+            if not job_stop_flags[CMD_ID].is_set():
+                auto_destroy_after_failure(
+                    status_path,
+                    'iv3_manual',
+                    f'Manual third IV test failed: {error}',
+                )
+        finally:
+            if shared_state.server_status not in ['error', 'destroyed', 'destroying']:
+                set_server_status('idle')
+
+    thread = threading.Thread(target=background_worker)
+    thread.start()
+    set_thread(CMD_ID, thread)
     return '', 204
 
 
@@ -760,7 +768,6 @@ def Destroy():
         os.system('pkill -f "make -f makefile_task3" 2>/dev/null')
         os.system('pkill -f "scripts/run_full_mmts_batch.py" 2>/dev/null')
         os.system('pkill -f "control_hmi.py" 2>/dev/null')
-
         join_job_threads(['Init', 'Run', 'AutoTest', 'IV3Test', 'Stop'])
 
         ## after command Run finished, reset the flag
@@ -788,39 +795,49 @@ def Destroy():
 @app.route('/status')
 def status():
     hasupdate = False
-    
+
     last_modified = os.path.getmtime(dirDAQresult)
     if last_modified != shared_state.DAQresult_current_modified:
         hasupdate = True
         shared_state.DAQresult_current_modified = last_modified
-    
+
     ### if something updated, list all sub directories as list. Or return empty list
     daq_result_dirs = [ subdir for subdir in os.listdir(dirDAQresult) if os.path.isdir(f'{dirDAQresult}/{subdir}') ] if hasupdate else []
+    try:
+        batch_status = read_status()
+    except (OSError, ValueError) as error:
+        logger.warning(f'[BatchStatus] Failed to read status: {error}')
+        batch_status = {
+            'status': 'error',
+            'phase_state': 'error',
+            'error_message': str(error),
+        }
     return jsonify({
         'status': shared_state.server_status,
         'jobmode': shared_state.jobmode,
         'DAQres': daq_result_dirs,
-        'batchStatus': read_status(base_dir=os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))),
+        'batchStatus': batch_status,
     })
 
 
 @app.route('/main.html')
 def main():
     daq_result_dirs = [ subdir for subdir in os.listdir(dirDAQresult) if os.path.isdir(f'{dirDAQresult}/{subdir}') ]
-    return render_template('index_task3.html', DAQres=daq_result_dirs, currentCONF=CONF_DICT, ccc='', IVCurveOnline_URL=external_URL, IVCurveOnline_height=external_URL_height,)
+    return render_template('index_task3.html',
+                           DAQres=daq_result_dirs,
+                           currentCONF=CONF_DICT,
+                           ccc='',
+                           IVCurveOnline_URL=external_URL,
+                           IVCurveOnline_height=external_URL_height,
+                           thermalCYCLE_iterationDICT = thermalcycle_iterations,
+                           )
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
                         format='[basicCONFIG] %(levelname)s - %(message)s',
                         datefmt='%H:%M:%S')
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    app_main = Flask(
-        __name__,
-        template_folder=os.path.join(base_dir, 'templates'),
-        static_folder=os.path.join(base_dir, 'static'),
-        static_url_path='/static',
-    )
+    app_main = Flask(__name__)
     app_main.register_blueprint(app, url_prefix='/task3')
     app_main.config["SECRET_KEY"] = '7eCZ^6nUxb6hjN5EbLYak&fvt'
     csrf = CSRFProtect(app_main)
@@ -828,5 +845,5 @@ if __name__ == '__main__':
 
     @app_main.route("/")
     def index():
-        return main()
+        return render_template("index_task3.html")
     app_main.run(debug=True, port=5005)

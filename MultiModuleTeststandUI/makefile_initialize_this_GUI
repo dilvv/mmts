@@ -46,9 +46,9 @@ task3a_clone_IVscan_codes: ## clone IV scan packages
 
 nodataPLOT := data/daqplots.nodata.png
 task3b_create_mmts_configuration: ## create mmts_configuration
-	python3 scripts/setup.mmts_configurations.py 
+	python3 scripts/setup.mmts_configurations.py
 	nano data/mmts_configurations.yaml
-	ln -s $$PWD/data/mmts_configurations.yaml external_packages/HGCal_Module_Production_Toolkit/configuration.yaml ### use configuration.yaml in youying's repo
+	#ln -s $$PWD/data/mmts_configurations.yaml external_packages/HGCal_Module_Production_Toolkit/configuration.yaml ### use configuration.yaml in youying's repo
 	if [ ! -f "$(andrewGUI_default_path)/configuration.yaml" ]; then ln -s $$PWD/data/mmts_configurations.yaml $(andrewGUI_default_path)/configuration.yaml; fi
 
 
@@ -57,7 +57,7 @@ task3b_create_mmts_configuration: ## create mmts_configuration
 
 
 ### flask related setup
-flaska_open_firewall_port5001: ## open firewall port 5001 such you can access server http://127.0.0.1:5001 
+flaska_open_firewall_port5001: ## open firewall port 5001 such you can access server http://127.0.0.1:5001
 	echo requesting permission for opening firewall port 5001
 	sudo sh scripts/open_firewall.sh
 
@@ -66,14 +66,14 @@ flaska_open_firewall_port5001: ## open firewall port 5001 such you can access se
 flaskb_make_virtual_environment: ## create python virtual envuironment
 	python3 -m venv .venv ; \
 	source .venv/bin/activate ; \
-	pip3 install   flask   flask-socketio   requests   sphinx   paramiko   pyvisa   pyvisa-py   pyyaml   flask-wtf   myst-parser   flask-cors   pymeasure==0.14.0   "python-snap7<3"   psycopg psycopg2-binary ; \
+	pip3 install   flask   flask-socketio   requests   sphinx   paramiko   pyvisa   pyvisa-py   pyyaml   flask-wtf   myst-parser   flask-cors   pymeasure   psycopg psycopg2-binary ; \
 	sudo yum install firewalld
 	#sudo apt update
 	#sudo apt install python3-psycopg python3-psycopg-c
 	#sudo apt update && sudo apt install firewalld
 
 flaskc_make_app_as_system_service: ## make this MultimoduleTeststandUI as a system service
-	chmod +x ./app.py
+	chmod +x ../app.py
 	### edit path in `data/MMTS.service` and `data/MMTS.service.variables`
 	python3 data/MMTS.service.createscript.py
 	sudo cp data/MMTS.service /etc/systemd/system/
@@ -96,4 +96,3 @@ help:  ## Display this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[32m<command>\033[0m $(IN_ARGS)\n\nCommands:\n\033[36m\033[0m\n"} /^[0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .DEFAULT_GOAL := help
-

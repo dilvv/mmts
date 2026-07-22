@@ -37,13 +37,12 @@ RUN mamba install -y -n ${ENVNAME} -c conda-forge \
     flask-wtf \
     myst-parser \
     flask-cors \
-    pymeasure=0.14.0 \
+    pymeasure \
     psycopg \
     && mamba clean -a -y
 
-# Optional: some Flask-SocketIO deployments prefer eventlet.
-# python-snap7 provides the snap7 import and v2.x supports Python 3.9.
-RUN mamba run -n ${ENVNAME} pip install --no-cache-dir eventlet "python-snap7<3"
+# Optional: some Flask-SocketIO deployments prefer eventlet
+RUN mamba run -n ${ENVNAME} pip install --no-cache-dir eventlet
 
 ENV PYTHONPATH=/app
 ENV LOG_LEVEL=INFO

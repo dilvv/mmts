@@ -15,4 +15,3 @@ export LOG_LEVEL=INFO
 
 ######### loading libraries from Andrew's UI
 export AndrewModuleTestingGUI_BASE=$PWD/external_packages/hgcal-module-testing-gui
-export ANDREW_GUI_PATH=$PWD/external_packages/hgcal-module-testing-gui

@@ -26,13 +26,15 @@ switch_delay ?= 0
 currentTEMPERATURE ?= 20
 currentHUMIDITY    ?= 50
 maxVOLTAGE ?= 500
+batch ?= ""
+iteration ?= "testing"
 IVscan_%:
 	@moduleID="$($(addprefix moduleID,$*))"; if [ "$${moduleID}" == "" ]; then echo [SkipModule] $(addprefix moduleID,$*) received empty, skip; fi
 	@moduleID="$($(addprefix moduleID,$*))"; if [ "$${moduleID}" != "" ]; then \
 			source ./init_bash_vars.sh && cd scripts/ && echo $$moduleID ; \
 			echo "$${moduleID}" >> $(tmp_file_for_summary_plot) ; \
 			echo "[maxVOLT] $(maxVOLTAGE)"; \
-			sh IVscan.run.sh "$${moduleID}" "$*" "$(maxVOLTAGE)" "$(currentTEMPERATURE)" "$(currentHUMIDITY)" "$(switch_delay)" "$(tmp_file_for_summary_plot)"; \
+			sh IVscan.run.sh "$${moduleID}" "$*" "$(maxVOLTAGE)" "$(currentTEMPERATURE)" "$(currentHUMIDITY)" "$(switch_delay)" "$(iteration)" "$(batch)"; \
 		fi
 
 
