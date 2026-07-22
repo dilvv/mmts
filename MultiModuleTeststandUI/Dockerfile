@@ -38,6 +38,7 @@ RUN mamba install -y -n ${ENVNAME} -c conda-forge \
     myst-parser \
     flask-cors \
     pymeasure=0.14.0 \
+    pandas=2.2.3 \
     psycopg \
     && mamba clean -a -y
 

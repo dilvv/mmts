@@ -13,7 +13,15 @@ import psycopg2
 import logging
 import sys
 from collections import deque
-from itertools import pairwise
+try:
+    from itertools import pairwise
+except ImportError:
+    from itertools import tee
+
+    def pairwise(iterable):
+        first, second = tee(iterable)
+        next(second, None)
+        return zip(first, second)
 
 log = logging.getLogger(__name__)
 
