@@ -42,7 +42,7 @@ RUN mamba install -y -n ${ENVNAME} -c conda-forge \
     && mamba clean -a -y
 
 # Optional: some Flask-SocketIO deployments prefer eventlet
-RUN mamba run -n ${ENVNAME} pip install --no-cache-dir eventlet
+RUN mamba run -n ${ENVNAME} pip install --no-cache-dir eventlet python-snap7==2.0.2
 
 ENV PYTHONPATH=/app
 ENV LOG_LEVEL=INFO

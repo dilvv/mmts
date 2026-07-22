@@ -66,7 +66,7 @@ flaska_open_firewall_port5001: ## open firewall port 5001 such you can access se
 flaskb_make_virtual_environment: ## create python virtual envuironment
 	python3 -m venv .venv ; \
 	source .venv/bin/activate ; \
-	pip3 install   flask   flask-socketio   requests   sphinx   paramiko   pyvisa   pyvisa-py   pyyaml   flask-wtf   myst-parser   flask-cors   pymeasure==0.14.0   psycopg psycopg2-binary ; \
+	pip3 install   flask   flask-socketio   requests   sphinx   paramiko   pyvisa   pyvisa-py   pyyaml   flask-wtf   myst-parser   flask-cors   pymeasure==0.14.0   python-snap7==2.0.2   psycopg psycopg2-binary ; \
 	sudo yum install firewalld
 	#sudo apt update
 	#sudo apt install python3-psycopg python3-psycopg-c
