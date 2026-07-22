@@ -38,8 +38,9 @@ try:
     with open(mmtsCONF, 'r') as fIN:
         import yaml
         conf = yaml.safe_load(fIN)
-        external_URL = conf['externalURL']['IVCurveOnline']['URL']
-        external_URL_height = conf['externalURL']['IVCurveOnline']['height']
+        iv_curve_online = (conf or {}).get('externalURL', {}).get('IVCurveOnline', {})
+        external_URL = iv_curve_online.get('URL', '')
+        external_URL_height = iv_curve_online.get('height', '200px')
         thermalcycle_iterations = conf.get('thermalcycle_iterations', {
             'iteration_1': 'iteration_1: room condition, high humidity',
             'iteration_2': 'iteration_2: first low temperature',

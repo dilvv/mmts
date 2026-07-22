@@ -20,8 +20,9 @@ try:
     with open(mmtsCONF, 'r') as fIN:
         import yaml
         conf = yaml.safe_load(fIN)
-        external_URL = conf['externalURL']['EnvMonitor']['URL']
-        external_URL_height = conf['externalURL']['EnvMonitor']['height']
+        env_monitor = (conf or {}).get('externalURL', {}).get('EnvMonitor', {})
+        external_URL = env_monitor.get('URL', '')
+        external_URL_height = env_monitor.get('height', '200px')
 except FileNotFoundError as e:
     raise FileNotFoundError(f'\n\n[LackOfMMTSconf] Need to create configuration file "data/mmts_configuration.yaml"') from e
 

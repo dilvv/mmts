@@ -64,6 +64,10 @@ def mmts_configs(pathto_HGCal_Module_Production_Toolkit, pathto_hgcal_module_tes
             'path_HGCal_Module_Production_Toolkit': pathto_HGCal_Module_Production_Toolkit,
             'path_hgcal_module_testing_gui': pathto_hgcal_module_testing_gui,
             'grafana_dashboard_url': urlto_GRAFANAdashbaord,
+            'externalURL': {
+                'EnvMonitor': {'URL': '', 'height': '350px'},
+                'IVCurveOnline': {'URL': '', 'height': '650px'},
+            },
             'MMTS_hardwares': {
                 'keithley': { 'Resource': '', 'Terminal': 'Front', 'WiresPolarization': 'Forward', 'DiscoveryMode': 'by-id' },
                 'vitek': { 'Resource': '', 'DiscoveryMode': 'by-id' },
