@@ -6,5 +6,8 @@
 DAQresults/*
 #init_bash_vars.sh
 external_packages/*/
+!external_packages/HGCal_Module_Production_Toolkit/
+!external_packages/HGCal_Module_Production_Toolkit/**
+external_packages/HGCal_Module_Production_Toolkit/configuration.yaml
 !external_packages/*.*
 tmp_files/*
