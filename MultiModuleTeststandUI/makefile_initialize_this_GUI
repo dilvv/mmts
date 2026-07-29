@@ -46,10 +46,10 @@ task3a_clone_IVscan_codes: ## clone IV scan packages
 
 nodataPLOT := data/daqplots.nodata.png
 task3b_create_mmts_configuration: ## create mmts_configuration
-	python3 scripts/setup.mmts_configurations.py
-	nano data/mmts_configurations.yaml
+	if [ ! -f "data/mmts_configurations.yaml" ]; then read "[CreateNewConfigs] You need to edit 'data/mmts_configurations.yaml'"; cp data/mmts_configurations.yaml.default data/mmts_configurations.yaml; vim data/mmts_configurations.yaml; else read -p "[UpdatingExistingConfig] check difference bwteen 'data/mmts_configurations.yaml' and 'data/mmts_configurations.yaml.default'"; vimdiff data/mmts_configurations.yaml data/mmts_configurations.yaml.default; fi
 	#ln -s $$PWD/data/mmts_configurations.yaml external_packages/HGCal_Module_Production_Toolkit/configuration.yaml ### use configuration.yaml in youying's repo
 	if [ ! -f "$(andrewGUI_default_path)/configuration.yaml" ]; then ln -s $$PWD/data/mmts_configurations.yaml $(andrewGUI_default_path)/configuration.yaml; fi
+	if [ ! -f "$(youyingSCRIPT_default_path)/configuration.yaml" ]; then ln -s $$PWD/data/mmts_configurations.yaml $(youyingSCRIPT_default_path)/configuration.yaml; fi
 
 
 
