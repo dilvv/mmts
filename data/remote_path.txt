@@ -1,0 +1,2 @@
+#remote_destation=ltsai@hep10.phys.ntu.edu.tw:/data1/ltsai/flaskTEST
+remote_destation=ctrlpc:/home/ntucms/workspace/mytestscript/mmts

@@ -1,0 +1,53 @@
+BASE_DIR :=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+moduleSTATUS := Untaped
+# ['Untaped', 'Taped', 'Assembled', 'Backside Bonded', 'Backside Encapsulated', 'Completely Bonded', 'Bonds Reworked', 'Completely Encapsulated', 'Bolted' ]
+inspector := test-user
+runTAG := testrun
+
+MODULE_POSITION := \
+	1L 1C 1R \
+	2L 2C 2R
+
+
+pedestal_%:
+	@moduleID="$($(addprefix moduleID,$*))"; if [ "$${moduleID}" == "" ]; then echo [SkipModule] $(addprefix moduleID,$*) received empty, skip; fi
+	@moduleID="$($(addprefix moduleID,$*))"; if [ "$${moduleID}" != "" ]; then \
+		sh run.pedestal.sh "$${moduleID}" "$(runTAG)" "$*" "$(moduleSTATUS)" "$(inspector)"; \
+		fi
+		
+
+
+pedestal_run: $(addprefix pedestal_,$(MODULE_POSITION)) ## run all pedestals [-jN][moduleSTATUS=Untaped][inspector=test-user][runTAG=run1]
+	echo hii
+
+
+
+initialize: ## initialize
+	echo initializing
+
+run: $(addprefix pedestal_,$(MODULE_POSITION)) ## pedestal run parallelly [-jN]
+	echo all pedestal run finished
+stop: ## stop pedestal run
+	echo need to think a mechanism for stopping pedestal run. ex: pkill make?
+
+destroy: ## remove all running jobs and disable board power
+	echo kwconn_pwr off
+	echo power off other facility
+
+
+
+
+test:
+	make -f $(MAKEFILE_LIST) pedestal_run moduleSTATUS=Untaped runTAG=testRUN  moduleID1L="320-XH-T4C-PM-00019"
+
+
+argline1 = \n\t\t[moduleID1L][moduleID1C][moduleID1R]
+argline2 = \n\t\t[moduleID2L][moduleID2C][moduleID2R]
+argline3 = \n\t\t[moduleID3L][moduleID3C][moduleID3R]
+
+IN_ARGS =  $(argline1)$(argline2)$(argline3)
+
+help:  ## Display this help
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[32m<command>\033[0m $(IN_ARGS)\n\nCommands:\n\033[36m\033[0m\n"} /^[0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+.DEFAULT_GOAL := help

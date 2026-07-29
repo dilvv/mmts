@@ -1,0 +1,76 @@
+.PHONY: help
+
+check_defined = \
+  $(strip $(foreach 1,$1, \
+  $(call __check_defined,$1,$(strip $(value 2)))))
+__check_defined = \
+  $(if $(value $1),, \
+  $(error Undefined $1$(if $2, ($2))))
+
+timeSTAMP := $$(date "+%Y%m%d_%H%M")
+
+initialize: ## initialize [JobName=testjob]
+	$(call check_defined, JobName)
+	sh $${BASH_SCRIPT_FOLDER}/step1.turnon_board_pwr.sh
+	@echo "[$(JobName) - StatusChangeInitialized] initialize ended"
+
+runtimeout=25
+run: subrun1L subrun1C ## run module. Once moduleID selected, activate related subrun [JobName=testjob][runtimeout=15] [moduleID1L=m1][moduleID1C=m2]
+	@echo "[$(JobName) - StatusChangeIdle] run ended"
+	@echo collecting output results
+	outFOLDER=outputs/task2_$(timeSTAME); mkdir -p $$outFOLDER; mv logs/log_*.txt $${outFOLDER}/ ## collect logs
+	#mv allfiles 
+
+
+moduleID1L=320XHF4CPM00160
+# rety twice if error found
+conf_kriaIP1L:=192.168.50.153 # 
+subrun1L: ## run module [moduleID1L=320XHF3CNT1000][runtimeout=15]
+	logNAME=subrun1L; pullerPORT=6002; \
+		function execfunc() { sh $${BASH_SCRIPT_FOLDER}/run_single_module.sh $$pullerPORT $(conf_kriaIP1L) $(moduleID1L) $(runtimeout) $$logNAME; }; \
+		if [ "$(moduleID1L)" != "" ];then \
+			execfunc; \
+			if [ "`tail -n1 logs/log_$${logNAME}_takedata.txt`" != "FINISHED" ];then execfunc; fi; \
+			if [ "`tail -n1 logs/log_$${logNAME}_takedata.txt`" != "FINISHED" ];then execfunc; fi; \
+		else echo $* is stopped; fi
+
+moduleID1C=320XHT4CPM00019
+conf_kriaIP1C:=192.168.50.152 # 
+subrun1C: ## run module [moduleID1C=320XHF3CNT1000][runtimeout=15]
+	logNAME=subrun1C; pullerPORT=6003; \
+		function execfunc() { sh $${BASH_SCRIPT_FOLDER}/run_single_module.sh $$pullerPORT $(conf_kriaIP1C) $(moduleID1C) $(runtimeout) $$logNAME; }; \
+		if [ "$(moduleID1C)" != "" ];then \
+			execfunc; \
+			if [ "`tail -n1 logs/log_$${logNAME}_takedata.txt`" != "FINISHED" ];then execfunc; fi; \
+			if [ "`tail -n1 logs/log_$${logNAME}_takedata.txt`" != "FINISHED" ];then execfunc; fi; \
+		else echo $* is stopped; fi
+
+
+
+stop: ## stop the run command, mainly stop the secondary jobs handled in `make run`
+	@echo "[$(JobName) - StatusChangeStopped] Stop finished"
+
+destroy: ## destroy
+	sh $${BASH_SCRIPT_FOLDER}/step10.turnoff_board_pwr.sh
+	@echo "[$(JobName) - StatusChangeDestroyed] Destroy finished"
+
+test: # test function. Notice the array should be separated with space and quoted with ". [theARRAY="0 1 2 3 4 5"]
+	aa=33; bb=55; cc=77; \
+		 function aaa() { echo $${aa} and $${bb} and $${cc} with $$1; } ; \
+		 aaa 111 ; \
+		 aaa 333 ; \
+		 aaa 555 ;
+
+	
+
+
+clean: # clean all logs
+	/bin/rm -f logs/log*.txt
+
+IN_ARGS = [opts]
+
+help:  ## Display this help
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[32m<command>\033[0m $(IN_ARGS)\n\nCommands:\n\033[36m\033[0m\n"} /^[0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+.DEFAULT_GOAL := help
+
