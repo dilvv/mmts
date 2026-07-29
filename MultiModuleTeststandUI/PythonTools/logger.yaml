@@ -1,0 +1,15 @@
+logfile: 'logs/log_{TIMESTAMP}.txt'
+
+filters:
+  - newtype: ERROR
+    jobname: job1
+    pattern: FINISHED
+  - newtype: WARNING
+    jobname: job1
+    pattern: No such file or directory
+  - newtype: ERROR
+    jobname: TestJob
+    pattern: log_hiii_TIMESTAMP.txt
+  - newtype: daqstat_errorclear
+    jobname: TestJob
+    pattern: However
