@@ -159,3 +159,65 @@ For the detailed UI operation guide, see:
 ```text
 MultiModuleTeststandUI/README.md
 ```
+
+## Sync MultiModuleTeststandUI from upstream
+
+The upstream UI repository is registered as:
+
+```text
+upstream-ui = git@github.com:ltsai323/MultiModuleTeststandUI.git
+```
+
+The commands below update only the `MultiModuleTeststandUI/` subtree. They do
+not modify `PLC_toolkits_mqtt_NTU/`.
+
+Run them from the root of this `mmts` repository with a clean working tree:
+
+```bash
+cd mmts
+
+git switch main
+git pull --ff-only origin main
+git fetch upstream-ui
+
+git switch -c sync-upstream-ui
+git subtree pull \
+  --prefix=MultiModuleTeststandUI \
+  upstream-ui main \
+  --squash
+```
+
+Command explanation:
+
+- `cd mmts`: enter the root repository containing both
+  `MultiModuleTeststandUI/` and `PLC_toolkits_mqtt_NTU/`.
+- `git switch main`: switch to the local `main` branch.
+- `git pull --ff-only origin main`: update local `main` from
+  `dilvv/mmts`. It stops instead of creating an unexpected merge commit if the
+  branches have diverged.
+- `git fetch upstream-ui`: download the latest history from
+  `ltsai323/MultiModuleTeststandUI` without changing local files.
+- `git switch -c sync-upstream-ui`: create a temporary integration branch so
+  an upstream update does not immediately change local `main`.
+- `git subtree pull --prefix=MultiModuleTeststandUI upstream-ui main --squash`:
+  merge the upstream repository's `main` branch into the local
+  `MultiModuleTeststandUI/` directory. `--squash` records one synchronization
+  commit in this repository.
+
+If the synchronization succeeds, test the GUI before merging it into this
+repository's `main`:
+
+```bash
+git switch main
+git merge --ff-only sync-upstream-ui
+git push origin main
+git branch -d sync-upstream-ui
+```
+
+If both repositories changed different lines, Git normally merges them
+automatically. If both changed the same lines, Git stops with a conflict and
+requires a manual decision; it does not silently overwrite the local changes.
+
+`git subtree` must be installed on the machine running these commands. Some
+Git for Windows installations do not bundle it; the Linux test machine should
+install the `git-subtree` package if the command is unavailable.

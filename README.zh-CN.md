@@ -147,3 +147,63 @@ PLC status code 来自 `PLC_toolkits_mqtt_NTU/plc_io.py`：
 
 - `pymeasure` 固定为 `0.14.0`，避免新版 Keithley 2400 实现变化影响当前代码。
 - Python 中 `import snap7` 对应 pip 包名是 `python-snap7`；当前安装约束为 `python-snap7<3`。
+
+## 从上游同步 MultiModuleTeststandUI
+
+原作者的 UI 仓库已经登记为：
+
+```text
+upstream-ui = git@github.com:ltsai323/MultiModuleTeststandUI.git
+```
+
+下面的流程只更新本仓库中的 `MultiModuleTeststandUI/` 子目录，不会修改
+`PLC_toolkits_mqtt_NTU/`。
+
+同步前应保证工作区干净，并从本仓库根目录执行：
+
+```bash
+cd mmts
+
+git switch main
+git pull --ff-only origin main
+git fetch upstream-ui
+
+git switch -c sync-upstream-ui
+git subtree pull \
+  --prefix=MultiModuleTeststandUI \
+  upstream-ui main \
+  --squash
+```
+
+每条命令的作用：
+
+- `cd mmts`：进入同时包含 `MultiModuleTeststandUI/` 和
+  `PLC_toolkits_mqtt_NTU/` 的根仓库。
+- `git switch main`：切换到本地 `main` 分支。
+- `git pull --ff-only origin main`：从自己的 GitHub 仓库
+  `dilvv/mmts` 更新本地 `main`。如果本地和远程已经分叉，命令会停止，
+  不会擅自生成合并提交。
+- `git fetch upstream-ui`：下载原作者仓库的最新分支和提交历史，但不修改
+  当前文件。
+- `git switch -c sync-upstream-ui`：从当前 `main` 创建临时同步分支，
+  避免未经测试的上游更新直接进入本地 `main`。
+- `git subtree pull --prefix=MultiModuleTeststandUI upstream-ui main --squash`：
+  把原作者仓库 `main` 分支的更新合并到本仓库的
+  `MultiModuleTeststandUI/` 目录；`--squash` 会把本次上游更新记录为一个
+  同步提交。
+
+同步完成后，应先测试 GUI。确认正常后再合并并推送到自己的仓库：
+
+```bash
+git switch main
+git merge --ff-only sync-upstream-ui
+git push origin main
+git branch -d sync-upstream-ui
+```
+
+如果双方修改的是不同位置，Git 通常会自动合并；如果双方修改了同一位置，
+Git 会停止并标记冲突，等待人工决定，不会静默覆盖本地修改。
+
+执行这些命令的机器必须安装 `git-subtree`。部分 Git for Windows 安装包
+没有包含该组件；如果 Linux 测试机提示找不到 `git subtree`，需要先安装
+`git-subtree` 软件包。
