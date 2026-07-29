@@ -1,4 +1,5 @@
 *.pyc
+.venv-preview/
 .*.swp
 .*.swo
 *.log

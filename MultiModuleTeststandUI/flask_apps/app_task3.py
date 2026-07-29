@@ -185,6 +185,7 @@ job_stop_flags = {
         'Init': threading.Event(),
         'Run': threading.Event(),
         'AutoTest': threading.Event(),
+        'ThermalCycle': threading.Event(),
         'IV3Test': threading.Event(),
         'Stop': threading.Event(),
         'Destroy': threading.Event(),
@@ -212,6 +213,7 @@ job_thread = {
         'Init': None,
         'Run': None,
         'AutoTest': None,
+        'ThermalCycle': None,
         'IV3Test': None,
         'Stop': None,
         'Destroy': None,
@@ -720,23 +722,141 @@ def IV3Test():
     return '', 204
 
 
+@app.route('/thermal_cycle', methods=['POST'])
+def ThermalCycle():
+    """Run the standalone PLC thermal cycle without starting an IV scan."""
+    CMD_ID = 'ThermalCycle'
+    if not check_jobmode():
+        return '', 204
+
+    json_data = request.get_json(silent=True) or {}
+    cycle_count_raw = str(json_data.get('cycle_count', '')).strip()
+    if not re.fullmatch(r'[1-9]\d*', cycle_count_raw):
+        return jsonify({
+            'status': 'error',
+            'errors': 'Cycle count must be a positive integer.',
+        }), 400
+    cycle_count = int(cycle_count_raw)
+    if cycle_count > 32767:
+        return jsonify({
+            'status': 'error',
+            'errors': 'Cycle count must be between 1 and 32767.',
+        }), 400
+
+    allowed_statuses = ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']
+    if shared_state.server_status not in allowed_statuses:
+        return jsonify({
+            'status': 'error',
+            'errors': f'Cannot start thermal cycle while server status is {shared_state.server_status}.',
+        }), 409
+
+    plc_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'PLC_toolkits_mqtt_NTU'))
+    control_script = os.path.join(plc_root, 'control_hmi.py')
+    cycle_config_template = os.path.join(plc_root, 'HMI_Control_5cycle.yml')
+    missing_files = [
+        path for path in (control_script, cycle_config_template)
+        if not os.path.isfile(path)
+    ]
+    if missing_files:
+        return jsonify({
+            'status': 'error',
+            'errors': f'Missing PLC thermal-cycle file(s): {", ".join(missing_files)}',
+        }), 500
+
+    job_stop_flags[CMD_ID].clear()
+    set_server_status('running')
+
+    def background_worker():
+        status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
+        runtime_dir = os.path.abspath(os.path.join('tmp_files', 'runtime'))
+        runtime_cycle_config = os.path.join(runtime_dir, 'HMI_Control_thermal_cycle_web.yml')
+        try:
+            os.makedirs(runtime_dir, exist_ok=True)
+            with open(cycle_config_template, 'r', encoding='utf-8') as fin:
+                cycle_cfg = yaml.safe_load(fin)
+            if not isinstance(cycle_cfg, dict) or not isinstance(cycle_cfg.get('experiment'), dict):
+                raise ValueError('HMI_Control_5cycle.yml has no experiment configuration.')
+            cycle_cfg['experiment']['cycles'] = cycle_count
+            with open(runtime_cycle_config, 'w', encoding='utf-8') as fout:
+                yaml.safe_dump(cycle_cfg, fout, sort_keys=False)
+
+            update_status({
+                'status': 'running',
+                'phase': 'thermal_cycle',
+                'phase_state': 'running',
+                'phase_summary': f'Running standalone PLC thermal cycle ({cycle_count} cycles).',
+                'thermal_cycle_count': cycle_count,
+            }, path=status_path)
+            command = subprocess.list2cmdline([
+                sys.executable,
+                control_script,
+                '-c',
+                runtime_cycle_config,
+                '-f',
+            ])
+            returncode = run_command(command, CMD_ID)
+            if job_stop_flags[CMD_ID].is_set():
+                update_status({
+                    'status': 'stopped',
+                    'phase': 'thermal_cycle',
+                    'phase_state': 'stopped',
+                    'phase_summary': 'Standalone PLC thermal cycle was stopped.',
+                }, path=status_path)
+            elif returncode == 0:
+                update_status({
+                    'status': 'completed',
+                    'phase': 'thermal_cycle',
+                    'phase_state': 'completed',
+                    'phase_summary': f'PLC accepted the standalone thermal-cycle command ({cycle_count} cycles).',
+                    'thermal_cycle_count': cycle_count,
+                }, path=status_path)
+            elif not job_stop_flags[CMD_ID].is_set():
+                update_status({
+                    'status': 'error',
+                    'phase': 'thermal_cycle',
+                    'phase_state': 'error',
+                    'error_message': f'Thermal cycle failed with exit code {returncode}.',
+                }, path=status_path)
+        except Exception as error:
+            logger.exception('[ThermalCycle] unexpected failure')
+            update_status({
+                'status': 'error',
+                'phase': 'thermal_cycle',
+                'phase_state': 'error',
+                'error_message': f'Thermal cycle failed: {error}',
+            }, path=status_path)
+            set_server_status('error')
+        finally:
+            try:
+                if os.path.isfile(runtime_cycle_config):
+                    os.remove(runtime_cycle_config)
+            except OSError as cleanup_error:
+                logger.warning(f'[ThermalCycle] failed to remove runtime config: {cleanup_error}')
+
+    thread = threading.Thread(target=background_worker)
+    thread.start()
+    set_thread(CMD_ID, thread)
+    return '', 204
+
+
 @app.route('/stop', methods=['POST'])
 def Stop():
     if not check_jobmode(): return '', 204
     CMD_ID = 'Stop'
 
     set_server_status('stopping')
-    stop_running_jobs(['Run', 'AutoTest', 'IV3Test'])
+    stop_running_jobs(['Run', 'AutoTest', 'ThermalCycle', 'IV3Test'])
     current_app.logger.debug(f'[ServerAction][Stop] set job_stop_flags as True')
 
     os.system('pkill -f "make -f makefile_task3" 2>/dev/null')
     os.system('pkill -f "scripts/run_full_mmts_batch.py" 2>/dev/null')
     os.system('pkill -f "control_hmi.py" 2>/dev/null')
-    join_job_threads(['Run', 'AutoTest', 'IV3Test'])
+    join_job_threads(['Run', 'AutoTest', 'ThermalCycle', 'IV3Test'])
 
     ## after command Run finished, reset the flag
     job_stop_flags['Run'].clear()
     job_stop_flags['AutoTest'].clear()
+    job_stop_flags['ThermalCycle'].clear()
     job_stop_flags['IV3Test'].clear()
 
     def background_worker():
@@ -765,11 +885,11 @@ def Destroy():
         set_server_status('destroying')
         for name, flag in job_stop_flags.items(): flag.set()
         current_app.logger.debug(f'[ServerAction][{CMD_ID}] set ALL job_stop_flags as True')
-        stop_running_jobs(['Init', 'Run', 'AutoTest', 'IV3Test', 'Stop'])
+        stop_running_jobs(['Init', 'Run', 'AutoTest', 'ThermalCycle', 'IV3Test', 'Stop'])
         os.system('pkill -f "make -f makefile_task3" 2>/dev/null')
         os.system('pkill -f "scripts/run_full_mmts_batch.py" 2>/dev/null')
         os.system('pkill -f "control_hmi.py" 2>/dev/null')
-        join_job_threads(['Init', 'Run', 'AutoTest', 'IV3Test', 'Stop'])
+        join_job_threads(['Init', 'Run', 'AutoTest', 'ThermalCycle', 'IV3Test', 'Stop'])
 
         ## after command Run finished, reset the flag
         for name, flag in job_stop_flags.items(): flag.clear()
