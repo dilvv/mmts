@@ -139,18 +139,24 @@ def run_iv_scan(scan_name, scan_cfg, module_ids, batch_id, status_file):
     }, path=status_file)
 
 
-def wait_for_condition(name, status_file, client, plc_cfg, predicate, timeout_seconds, poll_seconds):
+def wait_for_condition(
+    name, status_file, client, plc_cfg, predicate, timeout_seconds, poll_seconds,
+    status_extra=None,
+):
     deadline = time.time() + timeout_seconds
     last_snapshot = None
     while time.time() < deadline:
         snapshot = read_plc_snapshot(client, plc_cfg)
         last_snapshot = snapshot
-        update_status({
+        status_payload = {
             "phase": name,
             "phase_state": "waiting",
             "phase_summary": f"Waiting for {name}.",
             "plc": snapshot,
-        }, path=status_file)
+        }
+        if status_extra:
+            status_payload.update(status_extra() if callable(status_extra) else status_extra)
+        update_status(status_payload, path=status_file)
         if predicate(snapshot):
             return snapshot
         time.sleep(poll_seconds)
@@ -169,7 +175,10 @@ def wait_for_dewpoint(client, plc_cfg, threshold, status_file, timeout_seconds, 
     )
 
 
-def wait_for_status_code(name, client, plc_cfg, expected_code, status_file, timeout_seconds, poll_seconds):
+def wait_for_status_code(
+    name, client, plc_cfg, expected_code, status_file, timeout_seconds, poll_seconds,
+    status_extra=None,
+):
     return wait_for_condition(
         name=name,
         status_file=status_file,
@@ -178,10 +187,14 @@ def wait_for_status_code(name, client, plc_cfg, expected_code, status_file, time
         predicate=lambda snap: snap["plc_status_code"] == expected_code,
         timeout_seconds=timeout_seconds,
         poll_seconds=poll_seconds,
+        status_extra=status_extra,
     )
 
 
-def wait_for_status_transition(name, client, plc_cfg, seen_code, target_code, status_file, timeout_seconds, poll_seconds):
+def wait_for_status_transition(
+    name, client, plc_cfg, seen_code, target_code, status_file, timeout_seconds,
+    poll_seconds, status_extra=None,
+):
     deadline = time.time() + timeout_seconds
     observed_seen = False
     last_snapshot = None
@@ -190,12 +203,15 @@ def wait_for_status_transition(name, client, plc_cfg, seen_code, target_code, st
         last_snapshot = snapshot
         if snapshot["plc_status_code"] == seen_code:
             observed_seen = True
-        update_status({
+        status_payload = {
             "phase": name,
             "phase_state": "waiting",
             "phase_summary": f"Waiting for PLC transition {seen_code} -> {target_code}.",
             "plc": snapshot,
-        }, path=status_file)
+        }
+        if status_extra:
+            status_payload.update(status_extra() if callable(status_extra) else status_extra)
+        update_status(status_payload, path=status_file)
         if observed_seen and snapshot["plc_status_code"] == target_code:
             return snapshot
         time.sleep(poll_seconds)

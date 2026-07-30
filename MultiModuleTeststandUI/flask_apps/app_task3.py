@@ -173,6 +173,25 @@ def build_batch_iv_command(scan_name:str, confDICT:dict):
     return 'make -f makefile_task3 initialize && make -f makefile_task3 run ' + ' '.join(opts)
 
 
+def parse_iv2_cycle_numbers(raw_value, total_cycles):
+    value = str(raw_value or '').strip()
+    if not value:
+        return []
+    tokens = re.split(r'[\s,，]+', value)
+    selected = []
+    for token in tokens:
+        if not re.fullmatch(r'[1-9]\d*', token):
+            raise ValueError('IV2 cycles must be positive integers separated by commas.')
+        cycle_number = int(token)
+        if cycle_number > total_cycles:
+            raise ValueError(
+                f'IV2 cycle {cycle_number} is outside the selected range 1..{total_cycles}.'
+            )
+        if cycle_number not in selected:
+            selected.append(cycle_number)
+    return sorted(selected)
+
+
 
 #logger = logging.getLogger('flask.app')
 logger = logging.getLogger('werkzeug')
@@ -724,7 +743,7 @@ def IV3Test():
 
 @app.route('/thermal_cycle', methods=['POST'])
 def ThermalCycle():
-    """Run the standalone PLC thermal cycle without starting an IV scan."""
+    """Run PLC thermal cycles and optionally run IV2 on selected cycles."""
     CMD_ID = 'ThermalCycle'
     if not check_jobmode():
         return '', 204
@@ -743,6 +762,24 @@ def ThermalCycle():
             'errors': 'Cycle count must be between 1 and 32767.',
         }), 400
 
+    try:
+        iv2_cycles = parse_iv2_cycle_numbers(json_data.get('iv2_cycles', ''), cycle_count)
+    except ValueError as error:
+        return jsonify({
+            'status': 'error',
+            'errors': str(error),
+        }), 400
+
+    if iv2_cycles:
+        ok, errors = save_module_ids_from_json(json_data)
+        if not ok:
+            return jsonify({'status': 'error', 'errors': errors}), 400
+        if not any(module_ids_from_conf(CONF_DICT).values()):
+            return jsonify({
+                'status': 'error',
+                'errors': 'Enter at least one module ID before selecting IV2 cycles.',
+            }), 400
+
     allowed_statuses = ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']
     if shared_state.server_status not in allowed_statuses:
         return jsonify({
@@ -753,8 +790,14 @@ def ThermalCycle():
     plc_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'PLC_toolkits_mqtt_NTU'))
     control_script = os.path.join(plc_root, 'control_hmi.py')
     cycle_config_template = os.path.join(plc_root, 'HMI_Control_5cycle.yml')
+    runner_script = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        '..',
+        'scripts',
+        'run_selected_iv2_thermal_cycles.py',
+    ))
     missing_files = [
-        path for path in (control_script, cycle_config_template)
+        path for path in (control_script, cycle_config_template, runner_script)
         if not os.path.isfile(path)
     ]
     if missing_files:
@@ -769,30 +812,43 @@ def ThermalCycle():
     def background_worker():
         status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
         runtime_dir = os.path.abspath(os.path.join('tmp_files', 'runtime'))
-        runtime_cycle_config = os.path.join(runtime_dir, 'HMI_Control_thermal_cycle_web.yml')
+        runtime_workflow_config = os.path.join(runtime_dir, 'thermal_cycle_iv2_web.yml')
         try:
             os.makedirs(runtime_dir, exist_ok=True)
-            with open(cycle_config_template, 'r', encoding='utf-8') as fin:
-                cycle_cfg = yaml.safe_load(fin)
-            if not isinstance(cycle_cfg, dict) or not isinstance(cycle_cfg.get('experiment'), dict):
-                raise ValueError('HMI_Control_5cycle.yml has no experiment configuration.')
-            cycle_cfg['experiment']['cycles'] = cycle_count
-            with open(runtime_cycle_config, 'w', encoding='utf-8') as fout:
-                yaml.safe_dump(cycle_cfg, fout, sort_keys=False)
+            with open('data/full_batch_config.example.yml', 'r', encoding='utf-8') as fin:
+                batch_cfg = yaml.safe_load(fin)
+            workflow_cfg = {
+                'batch': new_batch_id(),
+                'total_cycles': cycle_count,
+                'iv2_cycles': iv2_cycles,
+                'normal_cold_hold_minutes': 10,
+                'iv2_cold_hold_minutes': 59,
+                'base_cycle_config': cycle_config_template,
+                'dewpoint_max_C': batch_cfg.get('precheck', {}).get('dewpoint_max_C', -30),
+                'module_ids': module_ids_from_conf(CONF_DICT),
+                'iv2_scan': batch_cfg['iv_scans']['iv2'],
+            }
+            with open(runtime_workflow_config, 'w', encoding='utf-8') as fout:
+                yaml.safe_dump(workflow_cfg, fout, sort_keys=False)
 
             update_status({
                 'status': 'running',
                 'phase': 'thermal_cycle',
                 'phase_state': 'running',
-                'phase_summary': f'Running standalone PLC thermal cycle ({cycle_count} cycles).',
+                'phase_summary': (
+                    f'Running {cycle_count} PLC thermal cycles. '
+                    f'Automatic IV2 cycles: {iv2_cycles or "none"}.'
+                ),
                 'thermal_cycle_count': cycle_count,
+                'iv2_cycles': iv2_cycles,
             }, path=status_path)
             command = subprocess.list2cmdline([
                 sys.executable,
-                control_script,
+                runner_script,
                 '-c',
-                runtime_cycle_config,
-                '-f',
+                runtime_workflow_config,
+                '--status-file',
+                os.path.abspath(status_path),
             ])
             returncode = run_command(command, CMD_ID)
             if job_stop_flags[CMD_ID].is_set():
@@ -807,8 +863,12 @@ def ThermalCycle():
                     'status': 'completed',
                     'phase': 'thermal_cycle',
                     'phase_state': 'completed',
-                    'phase_summary': f'PLC accepted the standalone thermal-cycle command ({cycle_count} cycles).',
+                    'phase_summary': (
+                        f'Completed {cycle_count} thermal cycles; '
+                        f'IV2 ran on {len(iv2_cycles)} selected cycle(s).'
+                    ),
                     'thermal_cycle_count': cycle_count,
+                    'iv2_cycles': iv2_cycles,
                 }, path=status_path)
             elif not job_stop_flags[CMD_ID].is_set():
                 update_status({
@@ -828,8 +888,8 @@ def ThermalCycle():
             set_server_status('error')
         finally:
             try:
-                if os.path.isfile(runtime_cycle_config):
-                    os.remove(runtime_cycle_config)
+                if os.path.isfile(runtime_workflow_config):
+                    os.remove(runtime_workflow_config)
             except OSError as cleanup_error:
                 logger.warning(f'[ThermalCycle] failed to remove runtime config: {cleanup_error}')
 

@@ -80,7 +80,7 @@ body {
 
 .thermal-cycle-control {
   display: grid;
-  grid-template-columns: auto 72px minmax(120px, 1fr);
+  grid-template-columns: auto 72px auto minmax(90px, 1fr) minmax(120px, 1fr);
   gap: 8px;
   align-items: center;
 }
@@ -91,7 +91,8 @@ body {
   font-weight: 600;
 }
 
-#thermalCycleCount {
+#thermalCycleCount,
+#thermalCycleIv2Cycles {
   width: 100%;
   box-sizing: border-box;
   padding: 9px 8px;
@@ -100,12 +101,14 @@ body {
   font: inherit;
 }
 
-#thermalCycleCount:focus {
+#thermalCycleCount:focus,
+#thermalCycleIv2Cycles:focus {
   border-color: #2563eb;
   outline: 2px solid rgba(37, 99, 235, 0.18);
 }
 
-#thermalCycleCount:disabled {
+#thermalCycleCount:disabled,
+#thermalCycleIv2Cycles:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -554,6 +557,15 @@ fieldset.env-control legend {
               inputmode="numeric"
               aria-label="Thermal cycle count"
               disabled>
+            <label for="thermalCycleIv2Cycles">IV2 cycles</label>
+            <input
+              type="text"
+              id="thermalCycleIv2Cycles"
+              placeholder="e.g. 2,4"
+              inputmode="numeric"
+              aria-label="Cycles that automatically run IV2"
+              title="Comma-separated cycle numbers. Selected cycles hold at low temperature for 59 minutes and run IV2."
+              disabled>
             <button type="button" id="thermalCycleBtn" class="ctrlbtn" onclick="thermalCycleJob()" disabled>Thermal Cycle</button>
           </div>
           <button type="button" id="iv3TestBtn" class="ctrlbtn" onclick="iv3TestJob()" disabled>IV3 Test</button>
@@ -863,6 +875,7 @@ function getElements() {
     autoTestBtn: document.getElementById("autoTestBtn"),
     thermalCycleBtn: document.getElementById("thermalCycleBtn"),
     thermalCycleCount: document.getElementById("thermalCycleCount"),
+    thermalCycleIv2Cycles: document.getElementById("thermalCycleIv2Cycles"),
     iv3TestBtn: document.getElementById("iv3TestBtn"),
     clearModulesBtn: document.getElementById("clearModulesBtn"),
     inputs: document.querySelectorAll("#pymodule_configurations input.inputModuleID"),
@@ -883,6 +896,7 @@ function applyButtonState(rule, status) {
   elements.autoTestBtn.disabled = !batchReady;
   elements.thermalCycleBtn.disabled = !batchReady;
   elements.thermalCycleCount.disabled = !batchReady;
+  elements.thermalCycleIv2Cycles.disabled = !batchReady;
   elements.iv3TestBtn.disabled = !batchReady;
   elements.clearModulesBtn.disabled = !clearReady;
 
@@ -902,6 +916,7 @@ function disableAllForOtherTask() {
   elements.autoTestBtn.disabled = true;
   elements.thermalCycleBtn.disabled = true;
   elements.thermalCycleCount.disabled = true;
+  elements.thermalCycleIv2Cycles.disabled = true;
   elements.iv3TestBtn.disabled = true;
   elements.clearModulesBtn.disabled = true;
 
@@ -936,6 +951,20 @@ function updateDaqOptions(daqResults) {
 }
 
 function updateBatchStatus(batchStatus = {}) {
+  const formatDuration = (seconds) => {
+    if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) {
+      return "";
+    }
+    const totalSeconds = Math.max(0, Math.round(Number(seconds)));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const remainingSeconds = totalSeconds % 60;
+    const parts = [];
+    if (hours) parts.push(`${hours}h`);
+    if (minutes || hours) parts.push(`${minutes}m`);
+    parts.push(`${remainingSeconds}s`);
+    return parts.join(" ");
+  };
   const lines = [];
   if (batchStatus.batch) lines.push(`batch: ${batchStatus.batch}`);
   if (batchStatus.status) lines.push(`status: ${batchStatus.status}`);
@@ -943,6 +972,30 @@ function updateBatchStatus(batchStatus = {}) {
   if (batchStatus.phase_state) lines.push(`phase state: ${batchStatus.phase_state}`);
   if (batchStatus.thermal_cycle_count !== undefined) {
     lines.push(`thermal cycles: ${batchStatus.thermal_cycle_count}`);
+  }
+  if (batchStatus.thermal_cycle_current !== undefined) {
+    lines.push(`current cycle: ${batchStatus.thermal_cycle_current}`);
+  }
+  if (batchStatus.thermal_cycle_elapsed_seconds !== undefined) {
+    lines.push(`current cycle elapsed: ${formatDuration(batchStatus.thermal_cycle_elapsed_seconds)}`);
+  }
+  if (batchStatus.last_cycle_duration_seconds !== null &&
+      batchStatus.last_cycle_duration_seconds !== undefined) {
+    lines.push(`last complete cycle: ${formatDuration(batchStatus.last_cycle_duration_seconds)}`);
+  }
+  if (batchStatus.average_cycle_duration_seconds !== null &&
+      batchStatus.average_cycle_duration_seconds !== undefined) {
+    lines.push(`average cycle time: ${formatDuration(batchStatus.average_cycle_duration_seconds)}`);
+  }
+  if (Array.isArray(batchStatus.iv2_cycles)) {
+    lines.push(`IV2 cycles: ${batchStatus.iv2_cycles.join(", ") || "none"}`);
+  }
+  if (batchStatus.next_iv2_cycle !== null &&
+      batchStatus.next_iv2_cycle !== undefined) {
+    const eta = formatDuration(batchStatus.next_iv2_eta_seconds);
+    lines.push(`next IV2: cycle ${batchStatus.next_iv2_cycle}${eta ? `, about ${eta}` : ""}`);
+  } else if (Array.isArray(batchStatus.iv2_cycles)) {
+    lines.push("next IV2: none");
   }
   if (batchStatus.phase_summary) lines.push(batchStatus.phase_summary);
   if (batchStatus.plc?.plc_status_text) lines.push(`PLC: ${batchStatus.plc.plc_status_text}`);
@@ -1055,6 +1108,7 @@ async function autoTestJob() {
 
 async function thermalCycleJob() {
   const cycleInput = document.getElementById("thermalCycleCount");
+  const iv2CyclesInput = document.getElementById("thermalCycleIv2Cycles");
   const cycleCount = cycleInput.value.trim();
   const cycleCountNumber = Number(cycleCount);
   if (
@@ -1067,10 +1121,43 @@ async function thermalCycleJob() {
     return;
   }
 
+  const iv2CyclesRaw = iv2CyclesInput.value.trim();
+  const normalizedIv2Cycles = iv2CyclesRaw.replace(/，/g, ",");
+  const iv2Cycles = normalizedIv2Cycles
+    ? normalizedIv2Cycles.split(/[\s,]+/).filter(Boolean)
+    : [];
+  if (iv2Cycles.some((value) => !/^[1-9]\d*$/.test(value))) {
+    alert("IV2 cycles must be positive integers separated by commas, for example: 2,4.");
+    iv2CyclesInput.focus();
+    return;
+  }
+  const invalidIv2Cycle = iv2Cycles.find(
+    (value) => Number(value) > cycleCountNumber
+  );
+  if (invalidIv2Cycle) {
+    alert(`IV2 cycle ${invalidIv2Cycle} is outside the range 1 to ${cycleCountNumber}.`);
+    iv2CyclesInput.focus();
+    return;
+  }
+
+  const selectedIv2Cycles = [...new Set(iv2Cycles.map(Number))].sort((a, b) => a - b);
+  const iv2Description = selectedIv2Cycles.length
+    ? ` Cycles ${selectedIv2Cycles.join(", ")} will hold cold for 59 minutes and automatically run IV2.`
+    : " No automatic IV2 will run; each cold hold remains 10 minutes.";
   const confirmed = confirm(
-    `Start the standalone PLC thermal cycle for ${cycleCountNumber} cycle(s)?`
+    `Start ${cycleCountNumber} PLC thermal cycle(s)?${iv2Description}`
   );
   if (!confirmed) return;
+
+  const formData = new FormData(
+    document.getElementById("pymodule_configurations")
+  );
+  const payload = {};
+  formData.forEach((value, key) => {
+    payload[key] = value;
+  });
+  payload.cycle_count = cycleCountNumber;
+  payload.iv2_cycles = selectedIv2Cycles.join(",");
 
   try {
     const response = await fetchWithTimeout("/task3/thermal_cycle", {
@@ -1079,7 +1166,7 @@ async function thermalCycleJob() {
         "Content-Type": "application/json",
         "X-CSRFToken": getCsrfToken(),
       },
-      body: JSON.stringify({ cycle_count: cycleCountNumber }),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) {
       throw await response.json();
