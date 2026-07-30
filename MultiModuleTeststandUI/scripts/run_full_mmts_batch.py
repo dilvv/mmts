@@ -31,6 +31,10 @@ IV_POSITIONS = [
 ]
 
 
+class IVInitializationError(RuntimeError):
+    """Raised when IV hardware initialization fails before a scan starts."""
+
+
 def now_iso():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
@@ -118,13 +122,16 @@ def build_iv_command(scan_cfg, module_ids, batch_id):
 
 
 def run_iv_scan(scan_name, scan_cfg, module_ids, batch_id, status_file):
-    run_command(
-        ["make", "-f", "makefile_task3", "initialize"],
-        cwd=UI_ROOT,
-        status_file=status_file,
-        stage=f"{scan_name}_initialize",
-        summary=f"Initializing IV hardware for {scan_name}.",
-    )
+    try:
+        run_command(
+            ["make", "-f", "makefile_task3", "initialize"],
+            cwd=UI_ROOT,
+            status_file=status_file,
+            stage=f"{scan_name}_initialize",
+            summary=f"Initializing IV hardware for {scan_name}.",
+        )
+    except RuntimeError as exc:
+        raise IVInitializationError(str(exc)) from exc
     run_command(
         build_iv_command(scan_cfg, module_ids, batch_id),
         cwd=UI_ROOT,

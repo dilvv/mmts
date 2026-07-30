@@ -181,6 +181,7 @@ def main():
     cfg = load_workflow_config(args.config)
     from plc_io import create_client, load_config
     from run_full_mmts_batch import (
+        IVInitializationError,
         read_plc_snapshot,
         run_cycle,
         run_iv_scan,
@@ -237,6 +238,8 @@ def main():
 
         completed_durations = []
         iv2_start_offsets = []
+        skipped_iv2_cycles = []
+        iv2_initialize_errors = {}
         for cycle_number in range(1, cfg["total_cycles"] + 1):
             runs_iv2 = cycle_number in selected
             cold_hold = (
@@ -327,13 +330,29 @@ def main():
                     "next_iv2_eta_seconds": 0,
                 }, path=args.status_file)
                 iv2_batch = f"{cfg['batch']}-C{cycle_number}"
-                run_iv_scan(
-                    "iv2",
-                    cfg["iv2_scan"],
-                    cfg["module_ids"],
-                    iv2_batch,
-                    args.status_file,
-                )
+                try:
+                    run_iv_scan(
+                        "iv2",
+                        cfg["iv2_scan"],
+                        cfg["module_ids"],
+                        iv2_batch,
+                        args.status_file,
+                    )
+                except IVInitializationError as exc:
+                    skipped_iv2_cycles.append(cycle_number)
+                    iv2_initialize_errors[str(cycle_number)] = str(exc)
+                    update_status({
+                        "status": "running",
+                        "phase": "iv2",
+                        "phase_state": "skipped",
+                        "phase_summary": (
+                            f"Skipped IV2 during cycle {cycle_number} because "
+                            "IV hardware initialization failed; thermal cycling continues."
+                        ),
+                        "skipped_iv2_cycles": skipped_iv2_cycles,
+                        "iv2_initialize_errors": iv2_initialize_errors,
+                        **timing_status(),
+                    }, path=args.status_file)
 
             wait_for_status_code(
                 name=f"thermal_cycle_{cycle_number}_complete",
@@ -373,6 +392,8 @@ def main():
                 "completed_cycle_durations_seconds": [
                     round(duration) for duration in completed_durations
                 ],
+                "skipped_iv2_cycles": skipped_iv2_cycles,
+                "iv2_initialize_errors": iv2_initialize_errors,
                 "next_iv2_cycle": next_iv2_cycle,
                 "next_iv2_eta_seconds": next_iv2_eta,
             }, path=args.status_file)
@@ -383,9 +404,12 @@ def main():
             "phase_state": "completed",
             "phase_summary": (
                 f"Completed {cfg['total_cycles']} thermal cycles; "
-                f"IV2 ran on {len(selected)} selected cycle(s)."
+                f"IV2 completed on {len(selected) - len(skipped_iv2_cycles)} selected "
+                f"cycle(s) and was skipped on {len(skipped_iv2_cycles)} cycle(s)."
             ),
             "finished_at": now_iso(),
+            "skipped_iv2_cycles": skipped_iv2_cycles,
+            "iv2_initialize_errors": iv2_initialize_errors,
         }, path=args.status_file)
     except Exception as exc:
         update_status({
