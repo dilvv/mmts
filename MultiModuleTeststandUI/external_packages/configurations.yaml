@@ -1,0 +1,169 @@
+DBDatabase: 'postgres'
+DBHostname: '192.168.204.178'
+DBPassword: 'IHEPhgcal'
+DBUsername: mmts_user
+DataLoc: /home/mmts/data
+DebugMode: true
+DefaultFontSize: '15'
+DefaultMaxVoltage: 500
+FPGAHostname:
+- cmshgcaltb4.lan.local.cmu.edu
+- cmshgcalkria1.lan.local.cmu.edu
+FPGAType:
+- Trenz
+- Kria
+HVDiscoveryMode: by-resource
+HVResource: ASRL/dev/ttyUSB0::INSTR
+HVTerminal: Rear
+HVWiresPolarization: Reverse
+HasHVSwitch: true
+HasLocalDB: true
+HasRHSensor: false
+HexactrlSWBranch: ROCv3
+Inspector: mmts
+MACSerial: CM
+PCKeyLoc: /home/hgcal/.ssh/id_rsa
+Station: Single-Module Test Stand
+TestingPCOpSys: Centos7
+MMTS_channel_config:
+  1C:
+    HVchannel: 2
+    IP: ''
+    pullerPORT: 6003
+    type: Kria
+  1L:
+    HVchannel: 1
+    IP: ''
+    pullerPORT: 6002
+    type: Kria
+  1R:
+    HVchannel: 3
+    IP: ''
+    pullerPORT: 6004
+    type: Kria
+  2C:
+    HVchannel: 5
+    IP: ''
+    pullerPORT: 6006
+    type: Kria
+  2L:
+    HVchannel: 4
+    IP: ''
+    pullerPORT: 6005
+    type: Kria
+  2R:
+    HVchannel: 6
+    IP: ''
+    pullerPORT: 6007
+    type: Kria
+  3C:
+    HVchannel: 8
+    IP: ''
+    pullerPORT: 6009
+    type: Kria
+  3L:
+    HVchannel: 7
+    IP: ''
+    pullerPORT: 6008
+    type: Kria
+  3R:
+    HVchannel: 9
+    IP: ''
+    pullerPORT: 6010
+    type: Kria
+  4C:
+    HVchannel: 11
+    IP: ''
+    pullerPORT: 6012
+    type: Kria
+  4L:
+    HVchannel: 10
+    IP: ''
+    pullerPORT: 6011
+    type: Kria
+  4R:
+    HVchannel: 12
+    IP: ''
+    pullerPORT: 6013
+    type: Kria
+  5C:
+    HVchannel: 14
+    IP: ''
+    pullerPORT: 6015
+    type: Kria
+  5L:
+    HVchannel: 13
+    IP: ''
+    pullerPORT: 6014
+    type: Kria
+  5R:
+    HVchannel: 15
+    IP: ''
+    pullerPORT: 6016
+    type: Kria
+  6C:
+    HVchannel: 17
+    IP: ''
+    pullerPORT: 6018
+    type: Kria
+  6L:
+    HVchannel: 16
+    IP: ''
+    pullerPORT: 6017
+    type: Kria
+  6R:
+    HVchannel: 18
+    IP: ''
+    pullerPORT: 6019
+    type: Kria
+  7C:
+    HVchannel: 20
+    IP: ''
+    pullerPORT: 6021
+    type: Kria
+  7L:
+    HVchannel: 19
+    IP: ''
+    pullerPORT: 6020
+    type: Kria
+  7R:
+    HVchannel: 21
+    IP: ''
+    pullerPORT: 6022
+    type: Kria
+  8C:
+    HVchannel: 23
+    IP: ''
+    pullerPORT: 6024
+    type: Kria
+  8L:
+    HVchannel: 22
+    IP: ''
+    pullerPORT: 6023
+    type: Kria
+  8R:
+    HVchannel: 24
+    IP: ''
+    pullerPORT: 6025
+    type: Kria
+MMTS_hardwares:
+  keithley:
+    DiscoveryMode: by-id
+    Resource: 'ASRL/dev/ttyUSB0::INSTR'
+    Terminal: Front
+    WiresPolarization: Reverse
+  vitek:
+    DiscoveryMode: by-id
+    Resource: 'ASRL/dev/ttyUSB1::INSTR'
+externalURL:
+  EnvMonitor:
+    URL: "http://192.168.204.187:3000/public-dashboards/72ad1d5bce8540668dcc212776d62c42"
+    height: 700px
+
+  IVCurveOnline:
+    URL: "http://192.168.204.187:3000/public-dashboards/d2663a2efe554641a1fe9ee7fc65d94e"
+    height: 700px
+grafana_dashboard_url: 'http://192.168.204.187:3000/goto/ffifsu3mkjif4e?orgId=1'
+inspector: any string
+path_HGCal_Module_Production_Toolkit: external_packages/HGCal_Module_Production_Toolkit
+path_hgcal_module_testing_gui: external_packages/hgcal-module-testing-gui
