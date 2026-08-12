@@ -88,18 +88,18 @@ def ExecCMD(jobID:str, confDICT:dict):
     make_command = 'make -n' if shared_state.debug_mode else 'make'
    #make_command = 'make -n'
     if jobID == 'Init':
-        return f'{make_command} -f makefile_task3  initialize JobName=Init'
+        return f'{make_command} -f makefile_task2  initialize JobName=Init'
     if jobID == 'Run':
         shared_state.runidx+=1
         runTAG = f'run{shared_state.runidx}'
         dictOPTs = ' '.join([ f'{key}={val}' for key,val in confDICT.items() if val != '' ])
 
         ### a patch END
-        return f'{make_command} -f makefile_task3  run ' + dictOPTs
+        return f'{make_command} -f makefile_task2  run ' + dictOPTs
     if jobID == 'Stop':
-        return f'{make_command} -f makefile_task3  stop JobName=Stop'
+        return f'{make_command} -f makefile_task2  stop JobName=Stop'
     if jobID == 'Destroy':
-        return f'{make_command} -f makefile_task3  destroy JobName=Destroy'
+        return f'{make_command} -f makefile_task2  destroy JobName=Destroy'
 
 
 
@@ -357,7 +357,7 @@ def Configure():
 
         value = getattr(form, varname).data if hasattr(form, varname) else ''
         current_app.logger.debug(f'[GotValue] Form {varname} got original value "{value}"')
-        clean_val = ignore_special_characters(str(value))
+        clean_val = ignore_special_characters(str(value)) if 'moduleID' in varname else str(value) ### only remove special character in moduleID
         if len(clean_val) > 20:
             current_app.logger.warning(f'[InputTooLong] Input {varname}:{clean_val} too long, resetting.')
             clean_val = ''

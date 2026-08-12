@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="10">
+  <title>MMTS GUI logs</title>
+  <style>
+    pre {
+      background: #111;
+      color: #ddd;
+      padding: 1rem;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Application logs</h1>
+  <pre>{% for line in lines %}{{ line }}{% endfor %}</pre>
+</body>
+</html>

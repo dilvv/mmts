@@ -441,7 +441,6 @@ def Init():
     return '', 204
 
 alphanumeric_validator = Regexp(r"^[a-zA-Z0-9-]*$", message="Only letters and numbers and dash allowed.")
-#alphanumeric_validator = Regexp("^[a-zA-Z0-9]*$", message="Only letters and numbers allowed.")
 class ConfigForm(FlaskForm):
    #currentTEMPERATURE = StringField("currentTEMPERATURE", validators=[InputRequired(message='Temperature Missing')])
     currentTEMPERATURE = IntegerField("currentTEMPERATURE", validators=[
@@ -532,7 +531,7 @@ def Configure():
 
         value = getattr(form, varname).data if hasattr(form, varname) else ''
         current_app.logger.debug(f'[GotValue] Form {varname} got original value "{value}"')
-        clean_val = ignore_special_characters(str(value))
+        clean_val = ignore_special_characters(str(value)) if 'moduleID' in varname else str(value) ### only remove special character in moduleID
         if len(clean_val) > 20:
             current_app.logger.warning(f'[InputTooLong] Input {varname}:{clean_val} too long, resetting.')
             clean_val = ''
