@@ -1,76 +1,89 @@
-.PHONY: help
+##### IV curve for multiple channel
+SHELL := /bin/bash
+BASE_DIR :=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-check_defined = \
-  $(strip $(foreach 1,$1, \
-  $(call __check_defined,$1,$(strip $(value 2)))))
-__check_defined = \
-  $(if $(value $1),, \
-  $(error Undefined $1$(if $2, ($2))))
-
-timeSTAMP := $$(date "+%Y%m%d_%H%M")
-
-initialize: ## initialize [JobName=testjob]
-	$(call check_defined, JobName)
-	sh $${BASH_SCRIPT_FOLDER}/step1.turnon_board_pwr.sh
-	@echo "[$(JobName) - StatusChangeInitialized] initialize ended"
-
-runtimeout=25
-run: subrun1L subrun1C ## run module. Once moduleID selected, activate related subrun [JobName=testjob][runtimeout=15] [moduleID1L=m1][moduleID1C=m2]
-	@echo "[$(JobName) - StatusChangeIdle] run ended"
-	@echo collecting output results
-	outFOLDER=outputs/task2_$(timeSTAME); mkdir -p $$outFOLDER; mv logs/log_*.txt $${outFOLDER}/ ## collect logs
-	#mv allfiles 
-
-
-moduleID1L=320XHF4CPM00160
-# rety twice if error found
-conf_kriaIP1L:=192.168.50.153 # 
-subrun1L: ## run module [moduleID1L=320XHF3CNT1000][runtimeout=15]
-	logNAME=subrun1L; pullerPORT=6002; \
-		function execfunc() { sh $${BASH_SCRIPT_FOLDER}/run_single_module.sh $$pullerPORT $(conf_kriaIP1L) $(moduleID1L) $(runtimeout) $$logNAME; }; \
-		if [ "$(moduleID1L)" != "" ];then \
-			execfunc; \
-			if [ "`tail -n1 logs/log_$${logNAME}_takedata.txt`" != "FINISHED" ];then execfunc; fi; \
-			if [ "`tail -n1 logs/log_$${logNAME}_takedata.txt`" != "FINISHED" ];then execfunc; fi; \
-		else echo $* is stopped; fi
-
-moduleID1C=320XHT4CPM00019
-conf_kriaIP1C:=192.168.50.152 # 
-subrun1C: ## run module [moduleID1C=320XHF3CNT1000][runtimeout=15]
-	logNAME=subrun1C; pullerPORT=6003; \
-		function execfunc() { sh $${BASH_SCRIPT_FOLDER}/run_single_module.sh $$pullerPORT $(conf_kriaIP1C) $(moduleID1C) $(runtimeout) $$logNAME; }; \
-		if [ "$(moduleID1C)" != "" ];then \
-			execfunc; \
-			if [ "`tail -n1 logs/log_$${logNAME}_takedata.txt`" != "FINISHED" ];then execfunc; fi; \
-			if [ "`tail -n1 logs/log_$${logNAME}_takedata.txt`" != "FINISHED" ];then execfunc; fi; \
-		else echo $* is stopped; fi
+MODULE_POSITION := \
+	1L 1C 1R \
+	2L 2C 2R \
+	3L 3C 3R \
+	4L 4C 4R \
+	5L 5C 5R \
+	6L 6C 6R \
+	7L 7C 7R \
+	8L 8C 8R
+argline1 = \n\t\t[moduleID1L][moduleID1C][moduleID1R]
+argline2 = \n\t\t[moduleID2L][moduleID2C][moduleID2R]
+argline3 = \n\t\t[moduleID3L][moduleID3C][moduleID3R]
+argline4 = \n\t\t[moduleID4L][moduleID4C][moduleID4R]
+argline5 = \n\t\t[moduleID5L][moduleID5C][moduleID5R]
+argline6 = \n\t\t[moduleID6L][moduleID6C][moduleID6R]
+argline7 = \n\t\t[moduleID7L][moduleID7C][moduleID7R]
+argline8 = \n\t\t[moduleID8L][moduleID8C][moduleID8R]
 
 
 
-stop: ## stop the run command, mainly stop the secondary jobs handled in `make run`
-	@echo "[$(JobName) - StatusChangeStopped] Stop finished"
+switch_delay ?= 0
+currentTEMPERATURE ?= 20
+currentHUMIDITY    ?= 50
+maxVOLTAGE ?= 500
+batch ?= ""
+iteration ?= "testing"
+IVscan_%:
+	@moduleID="$($(addprefix moduleID,$*))"; if [ "$${moduleID}" == "" ]; then echo [SkipModule] $(addprefix moduleID,$*) received empty, skip; fi
+	@moduleID="$($(addprefix moduleID,$*))"; if [ "$${moduleID}" != "" ]; then \
+			source ./init_bash_vars.sh && cd scripts/ && echo $$moduleID ; \
+			python3 mmts_batch_logging.create_an_entry.py -c ../data/mmts_configurations.yaml --description='IVSCANRun' --batch='$(batch)' --iteration='$(iteration)' --stations_and_modules='$(addprefix moduleID,$*):$($(addprefix moduleID,$*))' ; \
+			echo "$${moduleID}" >> $(tmp_file_for_summary_plot) ; \
+			echo "[maxVOLT] $(maxVOLTAGE)"; \
+			sh IVscan.run.sh "$${moduleID}" "$*" "$(maxVOLTAGE)" "$(currentTEMPERATURE)" "$(currentHUMIDITY)" "$(switch_delay)" "$(iteration)" "$(batch)"; \
+			python3 mmts_batch_logging.create_an_entry.py -c ../data/mmts_configurations.yaml --description='IVSCANEnd' --batch='$(batch)' --iteration='$(iteration)' --stations_and_modules='$(addprefix moduleID,$*):$($(addprefix moduleID,$*))' ; \
+		fi
 
-destroy: ## destroy
-	sh $${BASH_SCRIPT_FOLDER}/step10.turnoff_board_pwr.sh
-	@echo "[$(JobName) - StatusChangeDestroyed] Destroy finished"
-
-test: # test function. Notice the array should be separated with space and quoted with ". [theARRAY="0 1 2 3 4 5"]
-	aa=33; bb=55; cc=77; \
-		 function aaa() { echo $${aa} and $${bb} and $${cc} with $$1; } ; \
-		 aaa 111 ; \
-		 aaa 333 ; \
-		 aaa 555 ;
-
-	
 
 
-clean: # clean all logs
-	/bin/rm -f logs/log*.txt
+all_IVscan: $(addprefix IVscan_,$(MODULE_POSITION)) ## IV scan does not support multithread
+	echo "[FINISHED] all IV scan finished"
+	echo "[IDLE_STATE]"
 
-IN_ARGS = [opts]
+
+### read DataLoc in AndrewBASE/configuration.yaml
+### read overwritten information in data/mmts_configuration.yaml
+
+initialize: ## initialize
+	@( \
+		cd scripts ; \
+		python3 initialize_rs232_devices.py -c ../data/mmts_configurations.yaml MMTS_hardwares/vitek/Resource MMTS_hardwares/keithley/Resource; \
+		sh IVscan.initialize.sh \
+		&& echo "[INITIZLIZED_STATE]" \
+	) \
+	|| (echo "[ERROR_STATE]"; exit 1)
+
+tmp_file_for_summary_plot := $(BASE_DIR)/tmp_files/IVscan_scannedID.txt
+run: ## all IV scan (only single threaded allowed) [currentTEMPERATURE=20][currentHUMIDITY=50][switch_delay=0][maxVOLTAGE=500]
+	python3 scripts/mmts_batch_logging.create_an_entry.py -c data/mmts_configurations.yaml --description='MMTSjobRunning' --batch='$(batch)' --iteration='$(iteration)' --stations_and_modules='moduleID1L:$(moduleID1L),moduleID1C:$(moduleID1C),moduleID1R:$(moduleID1R),moduleID2L:$(moduleID2L),moduleID2C:$(moduleID2C),moduleID2R:$(moduleID2R),moduleID3L:$(moduleID3L),moduleID3C:$(moduleID3C),moduleID3R:$(moduleID3R),moduleID4L:$(moduleID4L),moduleID4C:$(moduleID4C),moduleID4R:$(moduleID4R),moduleID5L:$(moduleID5L),moduleID5C:$(moduleID5C),moduleID5R:$(moduleID5R),moduleID6L:$(moduleID6L),moduleID6C:$(moduleID6C),moduleID6R:$(moduleID6R),moduleID7L:$(moduleID7L),moduleID7C:$(moduleID7C),moduleID7R:$(moduleID7R),moduleID8L:$(moduleID8L),moduleID8C:$(moduleID8C),moduleID8R:$(moduleID8R)'
+	/bin/rm -rf tmp_files/out/* ## clean up
+	/bin/rm -f $(tmp_file_for_summary_plot)
+	$(MAKE) -f $(MAKEFILE_LIST) -j1 all_IVscan
+	$(MAKE) -f $(MAKEFILE_LIST) stop
+	python3 scripts/mmts_batch_logging.create_an_entry.py -c data/mmts_configurations.yaml --description='MMTSjobFinished' --batch='$(batch)' --iteration='$(iteration)' --stations_and_modules='moduleID1L:$(moduleID1L),moduleID1C:$(moduleID1C),moduleID1R:$(moduleID1R),moduleID2L:$(moduleID2L),moduleID2C:$(moduleID2C),moduleID2R:$(moduleID2R),moduleID3L:$(moduleID3L),moduleID3C:$(moduleID3C),moduleID3R:$(moduleID3R),moduleID4L:$(moduleID4L),moduleID4C:$(moduleID4C),moduleID4R:$(moduleID4R),moduleID5L:$(moduleID5L),moduleID5C:$(moduleID5C),moduleID5R:$(moduleID5R),moduleID6L:$(moduleID6L),moduleID6C:$(moduleID6C),moduleID6R:$(moduleID6R),moduleID7L:$(moduleID7L),moduleID7C:$(moduleID7C),moduleID7R:$(moduleID7R),moduleID8L:$(moduleID8L),moduleID8C:$(moduleID8C),moduleID8R:$(moduleID8R)'
+	echo "FINISHED"
+stop: ## stop pedestal run
+	source ./init_bash_vars.sh && cd scripts && \
+		sh IVscan.stop.sh
+
+destroy: ## remove all running jobs and disable board power
+	$(MAKE) -f $(MAKEFILE_LIST) stop
+
+
+
+
+test:
+	make -f $(MAKEFILE_LIST) all_IVscan moduleID1L="320XHT4CPM00019"
+
+
+IN_ARGS =  $(argline1)$(argline2)$(argline3)$(argline4)$(argline5)$(argline6)$(argline7)$(argline8)
 
 help:  ## Display this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[32m<command>\033[0m $(IN_ARGS)\n\nCommands:\n\033[36m\033[0m\n"} /^[0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .DEFAULT_GOAL := help
-

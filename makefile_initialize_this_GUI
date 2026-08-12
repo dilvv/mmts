@@ -30,7 +30,7 @@ task1b_create_daqclient_service: ## edit daq-client.service for using port 6002~
 task1c_create_output_folder: ## make directory from hgcal-module-testing-gui/configuration.yaml
 	echo "mkdir directory conf['DataLoc']/daqplots/ according to $${$(andrewGUI_default_path)/configuration.yaml}"; \
 	data_loc=`python3 scripts/access_yaml_var.py $(andrewGUI_default_path)/configuration.yaml DataLoc`; echo "Loaded DataLoc = $${data_loc}"; \
-	read -p "create sub directory "$${data_loc}" from conf['DataLoc'] in $(andrewGUI_default_path)/configuration.yaml"; \
+	read -p "create sub directory "$${data_loc}" from conf['DataLoc'] in $(andrewGUI_default_path)/configuration.yaml. (Press Enter to continue...)"; \
 	mkdir -p $${data_loc}/daqplots ; cp $(nodataPLOT) $${data_loc}/
 
 
@@ -45,11 +45,26 @@ task3a_clone_IVscan_codes: ## clone IV scan packages
 	fi
 
 nodataPLOT := data/daqplots.nodata.png
+
+
 task3b_create_mmts_configuration: ## create mmts_configuration
-	if [ ! -f "data/mmts_configurations.yaml" ]; then read "[CreateNewConfigs] You need to edit 'data/mmts_configurations.yaml'"; cp data/mmts_configurations.yaml.default data/mmts_configurations.yaml; vim data/mmts_configurations.yaml; else read -p "[UpdatingExistingConfig] check difference bwteen 'data/mmts_configurations.yaml' and 'data/mmts_configurations.yaml.default'"; vimdiff data/mmts_configurations.yaml data/mmts_configurations.yaml.default; fi
-	#ln -s $$PWD/data/mmts_configurations.yaml external_packages/HGCal_Module_Production_Toolkit/configuration.yaml ### use configuration.yaml in youying's repo
-	if [ ! -f "$(andrewGUI_default_path)/configuration.yaml" ]; then ln -s $$PWD/data/mmts_configurations.yaml $(andrewGUI_default_path)/configuration.yaml; fi
-	if [ ! -f "$(youyingSCRIPT_default_path)/configuration.yaml" ]; then ln -s $$PWD/data/mmts_configurations.yaml $(youyingSCRIPT_default_path)/configuration.yaml; fi
+	if [ ! -f "data/mmts_configurations.yaml" ]; then \
+		printf '%s' "[CreateNewConfigs] You need to edit 'data/mmts_configurations.yaml'. (Press Enter to continue...)"; \
+		read dummy; \
+		cp data/mmts_configurations.yaml.default data/mmts_configurations.yaml; \
+		vim data/mmts_configurations.yaml; \
+	fi
+	@if [ "$$(stat -c %Y data/mmts_configurations.yaml)" -lt "$$(stat -c %Y data/mmts_configurations.yaml.default)" ]; then \
+		printf '%s' "[GotNewConfigsVersion] You need to edit 'data/mmts_configurations.yaml' for new version. (Press Enter to continue...)"; \
+		read dummy; \
+		vimdiff data/mmts_configurations.yaml.default data/mmts_configurations.yaml; \
+	fi
+	@if [ ! -f "$(andrewGUI_default_path)/configuration.yaml" ]; then \
+		ln -s "$$PWD/data/mmts_configurations.yaml" "$(andrewGUI_default_path)/configuration.yaml"; \
+	fi
+	@if [ ! -f "$(youyingSCRIPT_default_path)/configuration.yaml" ]; then \
+		ln -s "$$PWD/data/mmts_configurations.yaml" "$(youyingSCRIPT_default_path)/configuration.yaml"; \
+	fi
 
 
 
@@ -74,19 +89,30 @@ flaskb_make_virtual_environment: ## create python virtual envuironment
 
 flaskc_make_app_as_system_service: ## make this MultimoduleTeststandUI as a system service
 	chmod +x ../app.py
-	### edit path in `data/MMTS.service` and `data/MMTS.service.variables`
+### edit path in `data/MMTS.service` and `data/MMTS.service.variables`
 	python3 data/MMTS.service.createscript.py
 	sudo cp data/MMTS.service /etc/systemd/system/
 	sudo systemctl daemon-reload
 	sudo systemctl start MMTS.service ### activate service
 	sudo systemctl enable MMTS.service ### activate service
-	#sudo systemctl stop  MMTS.service ### stop service
-	#journalctl -u MMTS.service  ### check error messages
+#sudo systemctl stop  MMTS.service ### stop service
+#journalctl -u MMTS.service  ### check error messages
 
 all: \
 	task1a_setup_andrewGUI task1b_create_daqclient_service task1c_create_output_folder \
 	task3a_clone_IVscan_codes task3b_create_mmts_configuration \
 	flaska_modify_teststand_IP_address flaskb_open_firewall_port5001 flaskc_make_virtual_environment flaskd_make_app_as_system_service
+
+updateGUI:
+	@echo [Update MMTS GUI] git pull
+	git pull
+	make -f ../../$(MAKEFILE) task3b_create_mmts_configuration
+	@echo [Update external_packages] cd external_packages/HGCal_Module_Production_Toolkit && git pull
+	cd external_packages/HGCal_Module_Production_Toolkit && git pull
+
+clean_logs:
+	/bin/rm -f logs/*
+
 
 
 

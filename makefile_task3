@@ -32,9 +32,11 @@ IVscan_%:
 	@moduleID="$($(addprefix moduleID,$*))"; if [ "$${moduleID}" == "" ]; then echo [SkipModule] $(addprefix moduleID,$*) received empty, skip; fi
 	@moduleID="$($(addprefix moduleID,$*))"; if [ "$${moduleID}" != "" ]; then \
 			source ./init_bash_vars.sh && cd scripts/ && echo $$moduleID ; \
+			python3 mmts_batch_logging.create_an_entry.py -c ../data/mmts_configurations.yaml --description='IVSCANRun' --batch='$(batch)' --iteration='$(iteration)' --stations_and_modules='$(addprefix moduleID,$*):$($(addprefix moduleID,$*))' ; \
 			echo "$${moduleID}" >> $(tmp_file_for_summary_plot) ; \
 			echo "[maxVOLT] $(maxVOLTAGE)"; \
 			sh IVscan.run.sh "$${moduleID}" "$*" "$(maxVOLTAGE)" "$(currentTEMPERATURE)" "$(currentHUMIDITY)" "$(switch_delay)" "$(iteration)" "$(batch)"; \
+			python3 mmts_batch_logging.create_an_entry.py -c ../data/mmts_configurations.yaml --description='IVSCANEnd' --batch='$(batch)' --iteration='$(iteration)' --stations_and_modules='$(addprefix moduleID,$*):$($(addprefix moduleID,$*))' ; \
 		fi
 
 
@@ -58,10 +60,12 @@ initialize: ## initialize
 
 tmp_file_for_summary_plot := $(BASE_DIR)/tmp_files/IVscan_scannedID.txt
 run: ## all IV scan (only single threaded allowed) [currentTEMPERATURE=20][currentHUMIDITY=50][switch_delay=0][maxVOLTAGE=500]
+	python3 scripts/mmts_batch_logging.create_an_entry.py -c data/mmts_configurations.yaml --description='MMTSjobRunning' --batch='$(batch)' --iteration='$(iteration)' --stations_and_modules='moduleID1L:$(moduleID1L),moduleID1C:$(moduleID1C),moduleID1R:$(moduleID1R),moduleID2L:$(moduleID2L),moduleID2C:$(moduleID2C),moduleID2R:$(moduleID2R),moduleID3L:$(moduleID3L),moduleID3C:$(moduleID3C),moduleID3R:$(moduleID3R),moduleID4L:$(moduleID4L),moduleID4C:$(moduleID4C),moduleID4R:$(moduleID4R),moduleID5L:$(moduleID5L),moduleID5C:$(moduleID5C),moduleID5R:$(moduleID5R),moduleID6L:$(moduleID6L),moduleID6C:$(moduleID6C),moduleID6R:$(moduleID6R),moduleID7L:$(moduleID7L),moduleID7C:$(moduleID7C),moduleID7R:$(moduleID7R),moduleID8L:$(moduleID8L),moduleID8C:$(moduleID8C),moduleID8R:$(moduleID8R)'
 	/bin/rm -rf tmp_files/out/* ## clean up
 	/bin/rm -f $(tmp_file_for_summary_plot)
 	$(MAKE) -f $(MAKEFILE_LIST) -j1 all_IVscan
 	$(MAKE) -f $(MAKEFILE_LIST) stop
+	python3 scripts/mmts_batch_logging.create_an_entry.py -c data/mmts_configurations.yaml --description='MMTSjobFinished' --batch='$(batch)' --iteration='$(iteration)' --stations_and_modules='moduleID1L:$(moduleID1L),moduleID1C:$(moduleID1C),moduleID1R:$(moduleID1R),moduleID2L:$(moduleID2L),moduleID2C:$(moduleID2C),moduleID2R:$(moduleID2R),moduleID3L:$(moduleID3L),moduleID3C:$(moduleID3C),moduleID3R:$(moduleID3R),moduleID4L:$(moduleID4L),moduleID4C:$(moduleID4C),moduleID4R:$(moduleID4R),moduleID5L:$(moduleID5L),moduleID5C:$(moduleID5C),moduleID5R:$(moduleID5R),moduleID6L:$(moduleID6L),moduleID6C:$(moduleID6C),moduleID6R:$(moduleID6R),moduleID7L:$(moduleID7L),moduleID7C:$(moduleID7C),moduleID7R:$(moduleID7R),moduleID8L:$(moduleID8L),moduleID8C:$(moduleID8C),moduleID8R:$(moduleID8R)'
 	echo "FINISHED"
 stop: ## stop pedestal run
 	source ./init_bash_vars.sh && cd scripts && \

@@ -46,7 +46,19 @@ make -f makefile_initialize_this_GUI flaskb_make_virtual_environment
 make -f makefile_initialize_this_GUI flaskc_make_app_as_system_service
 ```
 
+### Update this GUI
 
+```
+make -f makefile_initialize_this_GUI updateGUI
+systemctl restart MMTS.service
+```
+
+### Check and clean up the MMTS GUI logs
+Open link [http://127.0.0.1:5001/logs](http://127.0.0.1:5001/logs) for viewing the log files.
+
+```
+make -f makefile_initialize_this_GUI clean_logs
+```
 
 
 

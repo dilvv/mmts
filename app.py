@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import flask_apps.shared_state as shared_state
 from flask_wtf.csrf import CSRFProtect
 import sys
+from collections import deque
 
 # app.py
 import logging
@@ -153,6 +154,20 @@ def set_option():
 
 ### note only if jobmode is notSELECTED or job status is DESTROYED, allowed to select new jobmode
 
+@app.get("/logs")
+def view_logs():
+   ## Replace this with your real authentication/authorization check.
+   #if not current_user.is_authenticated or not current_user.is_admin:
+   #    abort(403)
+
+    try:
+        with open(logfile, "r", encoding="utf-8", errors="replace") as file:
+            lines = list(deque(file, maxlen=500))
+    except OSError:
+        app.logger.exception("Unable to read application log")
+        abort(500)
+
+    return render_template("logs.html", lines=lines)
 
 
 
