@@ -15,6 +15,7 @@ import re
 import os
 import signal
 import sys
+import tempfile
 import yaml
 ### HTTP status codes https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
 
@@ -192,6 +193,30 @@ def parse_iv2_cycle_numbers(raw_value, total_cycles):
     return sorted(selected)
 
 
+def hardware_workflow_busy_response(requested_job):
+    owner = shared_state.hardware_workflow_guard.owner
+    return jsonify({
+        'status': 'error',
+        'errors': (
+            f'Cannot start {requested_job}; hardware workflow '
+            f'{owner or "unknown"} is already active.'
+        ),
+    }), 409
+
+
+def build_plc_stop_command():
+    plc_root = os.path.abspath(os.path.join(
+        os.path.dirname(__file__), '..', '..', 'PLC_toolkits_mqtt_NTU'
+    ))
+    return subprocess.list2cmdline([
+        sys.executable,
+        os.path.join(plc_root, 'control_hmi.py'),
+        '--config',
+        os.path.join(plc_root, 'HMI_Control.yml'),
+        '--stop',
+    ])
+
+
 
 #logger = logging.getLogger('flask.app')
 logger = logging.getLogger('werkzeug')
@@ -360,9 +385,18 @@ def run_command(cmd: str, jobID):
     finally:
         process.wait()
         job_process[jobID] = None
-        if process.returncode == 0:
+        exit_class = shared_state.classify_process_exit(
+            process.returncode,
+            stop_requested=job_stop_flags[jobID].is_set(),
+        )
+        if exit_class == 'success':
             set_server_status('idle')
             logger.info(f'[{jobID}][finally] run_command() sets system to idle')
+        elif exit_class == 'stopped':
+            logger.info(
+                f'[{jobID}][finally] process exited after an operator-requested stop; '
+                'preserving the stopping state.'
+            )
         else:
             set_server_status('error')
             logger.info(f'[{jobID}][error] run_command() sets system to error. Please destroy and initialize it')
@@ -600,27 +634,35 @@ def Run():
     if not check_jobmode(): return '', 204
     current_app.logger.debug(f'[ServerAction][{CMD_ID}] Got an {CMD_ID} command executing')
 
+    if not isCommandRunable(shared_state.server_status,CMD_ID):
+        current_app.logger.debug(f'[ServerAction][{CMD_ID}] Current status is {shared_state.server_status}. reject "{CMD_ID}" command')
+        return jsonify({'status': 'error', 'errors': f'Cannot start Run while server status is {shared_state.server_status}.'}), 409
+    if not shared_state.hardware_workflow_guard.try_acquire(CMD_ID):
+        return hardware_workflow_busy_response(CMD_ID)
+
     job_stop_flags[CMD_ID].clear()
-    if isCommandRunable(shared_state.server_status,CMD_ID):
-        set_server_status('running')
-        current_app.logger.debug(f'[ServerAction][{CMD_ID}] the server status is idle, activate {CMD_ID} command')
+    set_server_status('running')
+    current_app.logger.debug(f'[ServerAction][{CMD_ID}] the server status is idle, activate {CMD_ID} command')
 
-        def background_worker():
-            try:
-                command = ExecCMD(CMD_ID, CONF_DICT)
-                #current_app.logger.debug(f'[bkg CMD Run] {command}')
-                run_command(command, CMD_ID)
-            finally:
+    def background_worker():
+        try:
+            command = ExecCMD(CMD_ID, CONF_DICT)
+            #current_app.logger.debug(f'[bkg CMD Run] {command}')
+            run_command(command, CMD_ID)
+        finally:
+            if shared_state.server_status not in ['stopping', 'stopped', 'error']:
                 set_server_status('idle')
-                logger.info("Job status set to idle.")
-            logger.info('background worker ended')
+            shared_state.hardware_workflow_guard.release(CMD_ID)
+            logger.info("Job status set to idle.")
+        logger.info('background worker ended')
 
-
+    try:
         t = threading.Thread(target=background_worker)
         t.start()
         set_thread(CMD_ID, t)
-    else:
-        current_app.logger.debug(f'[ServerAction][{CMD_ID}] Current status is {shared_state.server_status}. reject "{CMD_ID}" command')
+    except Exception:
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        raise
 
     return '', 204
 
@@ -631,17 +673,20 @@ def AutoTest():
     if not check_jobmode():
         return '', 204
 
-    ok, errors = save_module_ids_from_json(request.get_json())
-    if not ok:
-        return jsonify({'status': 'error', 'errors': errors}), 400
-
     allowed_statuses = ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']
     if shared_state.server_status not in allowed_statuses:
         return jsonify({
             'status': 'error',
             'errors': f'Cannot start AutoTest while server status is {shared_state.server_status}.',
         }), 409
+    if not shared_state.hardware_workflow_guard.try_acquire(CMD_ID):
+        return hardware_workflow_busy_response(CMD_ID)
+    ok, errors = save_module_ids_from_json(request.get_json())
+    if not ok:
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        return jsonify({'status': 'error', 'errors': errors}), 400
     if not any(module_ids_from_conf(CONF_DICT).values()):
+        shared_state.hardware_workflow_guard.release(CMD_ID)
         return jsonify({'status': 'error', 'errors': 'No module IDs configured for AutoTest.'}), 400
 
     job_stop_flags[CMD_ID].clear()
@@ -669,12 +714,17 @@ def AutoTest():
             if not job_stop_flags[CMD_ID].is_set():
                 auto_destroy_after_failure(status_path, 'autotest', f'AutoTest failed: {error}')
         finally:
-            if shared_state.server_status not in ['error', 'destroyed', 'destroying']:
+            if shared_state.server_status not in ['error', 'destroyed', 'destroying', 'stopping', 'stopped']:
                 set_server_status('idle')
+            shared_state.hardware_workflow_guard.release(CMD_ID)
 
-    thread = threading.Thread(target=background_worker)
-    thread.start()
-    set_thread(CMD_ID, thread)
+    try:
+        thread = threading.Thread(target=background_worker)
+        thread.start()
+        set_thread(CMD_ID, thread)
+    except Exception:
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        raise
     return '', 204
 
 
@@ -684,17 +734,20 @@ def IV3Test():
     if not check_jobmode():
         return '', 204
 
-    ok, errors = save_module_ids_from_json(request.get_json())
-    if not ok:
-        return jsonify({'status': 'error', 'errors': errors}), 400
-
     allowed_statuses = ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']
     if shared_state.server_status not in allowed_statuses:
         return jsonify({
             'status': 'error',
             'errors': f'Cannot start IV3Test while server status is {shared_state.server_status}.',
         }), 409
+    if not shared_state.hardware_workflow_guard.try_acquire(CMD_ID):
+        return hardware_workflow_busy_response(CMD_ID)
+    ok, errors = save_module_ids_from_json(request.get_json())
+    if not ok:
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        return jsonify({'status': 'error', 'errors': errors}), 400
     if not any(module_ids_from_conf(CONF_DICT).values()):
+        shared_state.hardware_workflow_guard.release(CMD_ID)
         return jsonify({'status': 'error', 'errors': 'No module IDs configured for IV3Test.'}), 400
 
     job_stop_flags[CMD_ID].clear()
@@ -732,12 +785,17 @@ def IV3Test():
                     f'Manual third IV test failed: {error}',
                 )
         finally:
-            if shared_state.server_status not in ['error', 'destroyed', 'destroying']:
+            if shared_state.server_status not in ['error', 'destroyed', 'destroying', 'stopping', 'stopped']:
                 set_server_status('idle')
+            shared_state.hardware_workflow_guard.release(CMD_ID)
 
-    thread = threading.Thread(target=background_worker)
-    thread.start()
-    set_thread(CMD_ID, thread)
+    try:
+        thread = threading.Thread(target=background_worker)
+        thread.start()
+        set_thread(CMD_ID, thread)
+    except Exception:
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        raise
     return '', 204
 
 
@@ -770,16 +828,6 @@ def ThermalCycle():
             'errors': str(error),
         }), 400
 
-    if iv2_cycles:
-        ok, errors = save_module_ids_from_json(json_data)
-        if not ok:
-            return jsonify({'status': 'error', 'errors': errors}), 400
-        if not any(module_ids_from_conf(CONF_DICT).values()):
-            return jsonify({
-                'status': 'error',
-                'errors': 'Enter at least one module ID before selecting IV2 cycles.',
-            }), 400
-
     allowed_statuses = ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']
     if shared_state.server_status not in allowed_statuses:
         return jsonify({
@@ -789,7 +837,7 @@ def ThermalCycle():
 
     plc_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'PLC_toolkits_mqtt_NTU'))
     control_script = os.path.join(plc_root, 'control_hmi.py')
-    cycle_config_template = os.path.join(plc_root, 'HMI_Control_5cycle.yml')
+    cycle_config_template = os.path.join(plc_root, 'HMI_Control_single_cycle.yml')
     runner_script = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
         '..',
@@ -805,6 +853,19 @@ def ThermalCycle():
             'status': 'error',
             'errors': f'Missing PLC thermal-cycle file(s): {", ".join(missing_files)}',
         }), 500
+    if not shared_state.hardware_workflow_guard.try_acquire(CMD_ID):
+        return hardware_workflow_busy_response(CMD_ID)
+    if iv2_cycles:
+        ok, errors = save_module_ids_from_json(json_data)
+        if not ok:
+            shared_state.hardware_workflow_guard.release(CMD_ID)
+            return jsonify({'status': 'error', 'errors': errors}), 400
+        if not any(module_ids_from_conf(CONF_DICT).values()):
+            shared_state.hardware_workflow_guard.release(CMD_ID)
+            return jsonify({
+                'status': 'error',
+                'errors': 'Enter at least one module ID before selecting IV2 cycles.',
+            }), 400
 
     job_stop_flags[CMD_ID].clear()
     set_server_status('running')
@@ -812,9 +873,15 @@ def ThermalCycle():
     def background_worker():
         status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
         runtime_dir = os.path.abspath(os.path.join('tmp_files', 'runtime'))
-        runtime_workflow_config = os.path.join(runtime_dir, 'thermal_cycle_iv2_web.yml')
+        runtime_workflow_config = None
         try:
             os.makedirs(runtime_dir, exist_ok=True)
+            config_fd, runtime_workflow_config = tempfile.mkstemp(
+                prefix='thermal_cycle_iv2_web_',
+                suffix='.yml',
+                dir=runtime_dir,
+            )
+            os.close(config_fd)
             with open('data/full_batch_config.example.yml', 'r', encoding='utf-8') as fin:
                 batch_cfg = yaml.safe_load(fin)
             workflow_cfg = {
@@ -888,14 +955,19 @@ def ThermalCycle():
             set_server_status('error')
         finally:
             try:
-                if os.path.isfile(runtime_workflow_config):
+                if runtime_workflow_config and os.path.isfile(runtime_workflow_config):
                     os.remove(runtime_workflow_config)
             except OSError as cleanup_error:
                 logger.warning(f'[ThermalCycle] failed to remove runtime config: {cleanup_error}')
+            shared_state.hardware_workflow_guard.release(CMD_ID)
 
-    thread = threading.Thread(target=background_worker)
-    thread.start()
-    set_thread(CMD_ID, thread)
+    try:
+        thread = threading.Thread(target=background_worker)
+        thread.start()
+        set_thread(CMD_ID, thread)
+    except Exception:
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        raise
     return '', 204
 
 
@@ -918,22 +990,25 @@ def Stop():
     job_stop_flags['AutoTest'].clear()
     job_stop_flags['ThermalCycle'].clear()
     job_stop_flags['IV3Test'].clear()
+    job_stop_flags['Stop'].clear()
 
     def background_worker():
-        try:
-            command = ExecCMD(CMD_ID, CONF_DICT)
-            #current_app.logger.debug(f'[bkg CMD Stop] {command}')
-            run_command(command, CMD_ID)
-        finally:
-            set_server_status('idle')
-            logger.info("Job status set to idle.")
+        plc_returncode = run_command(build_plc_stop_command(), CMD_ID)
+        iv_returncode = run_command(ExecCMD(CMD_ID, CONF_DICT), CMD_ID)
+        if plc_returncode == 0 and iv_returncode == 0:
+            set_server_status('stopped')
+            logger.info("Operator-requested PLC and IV cleanup completed.")
+        else:
+            set_server_status('error')
+            logger.error(
+                f'Operator Stop cleanup failed: PLC={plc_returncode}, IV={iv_returncode}'
+            )
         logger.info('background worker ended')
 
     t = threading.Thread(target=background_worker)
     t.start()
     t.join() # direct run without accept other command
 
-    set_server_status('stopped')
     return '', 204
 
 @app.route('/destroy', methods=['POST'])

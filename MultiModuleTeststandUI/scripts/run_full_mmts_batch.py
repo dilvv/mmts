@@ -200,10 +200,10 @@ def wait_for_status_code(
 
 def wait_for_status_transition(
     name, client, plc_cfg, seen_code, target_code, status_file, timeout_seconds,
-    poll_seconds, status_extra=None,
+    poll_seconds, status_extra=None, seen_already=False,
 ):
     deadline = time.time() + timeout_seconds
-    observed_seen = False
+    observed_seen = seen_already
     last_snapshot = None
     while time.time() < deadline:
         snapshot = read_plc_snapshot(client, plc_cfg)
@@ -223,6 +223,64 @@ def wait_for_status_transition(
             return snapshot
         time.sleep(poll_seconds)
     raise TimeoutError(f"Timed out while waiting for PLC transition {seen_code} -> {target_code}. Last PLC snapshot: {last_snapshot}")
+
+
+class StableStatusTracker:
+    """Require activity followed by repeated target-state observations."""
+
+    def __init__(self, target_code, consecutive_samples=3, activity_observed=False):
+        if consecutive_samples < 1:
+            raise ValueError("consecutive_samples must be positive.")
+        self.target_code = target_code
+        self.consecutive_samples = consecutive_samples
+        self.activity_observed = activity_observed
+        self.target_count = 0
+
+    def observe(self, status_code):
+        if status_code != self.target_code:
+            self.activity_observed = True
+            self.target_count = 0
+            return False
+        if not self.activity_observed:
+            return False
+        self.target_count += 1
+        return self.target_count >= self.consecutive_samples
+
+
+def wait_for_stable_status_code(
+    name, client, plc_cfg, expected_code, status_file, timeout_seconds,
+    poll_seconds, consecutive_samples=3, activity_observed=False,
+    status_extra=None,
+):
+    tracker = StableStatusTracker(
+        expected_code,
+        consecutive_samples=consecutive_samples,
+        activity_observed=activity_observed,
+    )
+    deadline = time.time() + timeout_seconds
+    last_snapshot = None
+    while time.time() < deadline:
+        snapshot = read_plc_snapshot(client, plc_cfg)
+        last_snapshot = snapshot
+        status_payload = {
+            "phase": name,
+            "phase_state": "waiting",
+            "phase_summary": (
+                f"Waiting for {consecutive_samples} consecutive PLC status "
+                f"samples with code {expected_code}."
+            ),
+            "plc": snapshot,
+        }
+        if status_extra:
+            status_payload.update(status_extra() if callable(status_extra) else status_extra)
+        update_status(status_payload, path=status_file)
+        if tracker.observe(snapshot["plc_status_code"]):
+            return snapshot
+        time.sleep(poll_seconds)
+    raise TimeoutError(
+        f"Timed out while waiting for stable PLC status {expected_code}. "
+        f"Last PLC snapshot: {last_snapshot}"
+    )
 
 
 def run_cycle(name, config_filename, status_file):
@@ -305,10 +363,11 @@ def main():
             status_file=args.status_file,
             timeout_seconds=args.transition_timeout_minutes * 60.0,
             poll_seconds=args.poll_seconds,
+            seen_already=True,
         )
 
         run_iv_scan("iv2", iv_scans["iv2"], cfg["module_ids"], cfg["batch"], args.status_file)
-        wait_for_status_code(
+        wait_for_stable_status_code(
             name="cycle1_complete",
             client=client,
             plc_cfg=plc_runtime_cfg,
@@ -316,6 +375,8 @@ def main():
             status_file=args.status_file,
             timeout_seconds=args.transition_timeout_minutes * 60.0,
             poll_seconds=args.poll_seconds,
+            consecutive_samples=3,
+            activity_observed=True,
         )
 
         run_cycle("cycle2to6_start", cycle_cfg.get("remaining_cycles", "HMI_Control_5cycle.yml"), args.status_file)
@@ -328,7 +389,7 @@ def main():
             timeout_seconds=args.start_timeout_minutes * 60.0,
             poll_seconds=args.poll_seconds,
         )
-        wait_for_status_code(
+        wait_for_stable_status_code(
             name="cycle2to6_complete",
             client=client,
             plc_cfg=plc_runtime_cfg,
@@ -336,6 +397,8 @@ def main():
             status_file=args.status_file,
             timeout_seconds=args.transition_timeout_minutes * 60.0,
             poll_seconds=args.poll_seconds,
+            consecutive_samples=3,
+            activity_observed=True,
         )
 
         run_iv_scan("iv3", iv_scans["iv3"], cfg["module_ids"], cfg["batch"], args.status_file)

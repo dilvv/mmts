@@ -108,6 +108,8 @@ def load_workflow_config(path):
 
 
 def write_single_cycle_config(base_path, output_path, cold_hold_minutes):
+    if os.path.abspath(base_path) == os.path.abspath(output_path):
+        raise ValueError("Runtime PLC config must not overwrite its source template.")
     with open(base_path, "r", encoding="utf-8") as fin:
         cycle_cfg = yaml.safe_load(fin)
     if not isinstance(cycle_cfg, dict) or not isinstance(cycle_cfg.get("experiment"), dict):
@@ -116,6 +118,21 @@ def write_single_cycle_config(base_path, output_path, cold_hold_minutes):
     cycle_cfg["experiment"]["idle_cold_min"] = cold_hold_minutes
     with open(output_path, "w", encoding="utf-8") as fout:
         yaml.safe_dump(cycle_cfg, fout, sort_keys=False)
+
+
+def build_cycle_plan(total_cycles, selected_cycles, normal_hold_minutes=10, iv2_hold_minutes=59):
+    selected = set(validate_cycle_numbers(list(selected_cycles), total_cycles))
+    return [
+        {
+            "cycle_number": cycle_number,
+            "cycles": 1,
+            "idle_cold_min": (
+                iv2_hold_minutes if cycle_number in selected else normal_hold_minutes
+            ),
+            "runs_iv2": cycle_number in selected,
+        }
+        for cycle_number in range(1, total_cycles + 1)
+    ]
 
 
 def estimate_cycle_seconds(cold_hold_minutes, warm_hold_minutes, completed_durations):
@@ -186,22 +203,20 @@ def main():
         run_cycle,
         run_iv_scan,
         wait_for_dewpoint,
+        wait_for_stable_status_code,
         wait_for_status_code,
         wait_for_status_transition,
     )
 
     selected = set(cfg["iv2_cycles"])
     base_cycle_config = os.path.abspath(
-        cfg.get("base_cycle_config") or os.path.join(PLC_ROOT, "HMI_Control_5cycle.yml")
+        cfg.get("base_cycle_config") or os.path.join(PLC_ROOT, "HMI_Control_single_cycle.yml")
     )
     with open(base_cycle_config, "r", encoding="utf-8") as fin:
         base_cycle_cfg = yaml.safe_load(fin)
     warm_hold_minutes = int(base_cycle_cfg["experiment"].get("idle_warm_min", 10))
     plc_runtime_cfg = load_config(base_cycle_config)["plc"]
-    runtime_cycle_config = os.path.join(
-        os.path.dirname(os.path.abspath(args.config)),
-        "HMI_Control_thermal_cycle_current.yml",
-    )
+    runtime_cycle_config = os.path.splitext(os.path.abspath(args.config))[0] + ".current-cycle.yml"
 
     write_status({
         "runner": "run_selected_iv2_thermal_cycles.py",
@@ -240,13 +255,19 @@ def main():
         iv2_start_offsets = []
         skipped_iv2_cycles = []
         iv2_initialize_errors = {}
-        for cycle_number in range(1, cfg["total_cycles"] + 1):
-            runs_iv2 = cycle_number in selected
-            cold_hold = (
-                cfg["iv2_cold_hold_minutes"]
-                if runs_iv2
-                else cfg["normal_cold_hold_minutes"]
+        cycle_plan = {
+            step["cycle_number"]: step
+            for step in build_cycle_plan(
+                cfg["total_cycles"],
+                cfg["iv2_cycles"],
+                normal_hold_minutes=cfg["normal_cold_hold_minutes"],
+                iv2_hold_minutes=cfg["iv2_cold_hold_minutes"],
             )
+        }
+        for cycle_number in range(1, cfg["total_cycles"] + 1):
+            cycle_step = cycle_plan[cycle_number]
+            runs_iv2 = cycle_step["runs_iv2"]
+            cold_hold = cycle_step["idle_cold_min"]
             write_single_cycle_config(base_cycle_config, runtime_cycle_config, cold_hold)
             cycle_started_monotonic = time.monotonic()
 
@@ -319,6 +340,7 @@ def main():
                     timeout_seconds=args.transition_timeout_minutes * 60.0,
                     poll_seconds=args.poll_seconds,
                     status_extra=timing_status,
+                    seen_already=True,
                 )
                 iv2_start_offsets.append(time.monotonic() - cycle_started_monotonic)
                 update_status({
@@ -354,7 +376,7 @@ def main():
                         **timing_status(),
                     }, path=args.status_file)
 
-            wait_for_status_code(
+            wait_for_stable_status_code(
                 name=f"thermal_cycle_{cycle_number}_complete",
                 client=client,
                 plc_cfg=plc_runtime_cfg,
@@ -362,6 +384,8 @@ def main():
                 status_file=args.status_file,
                 timeout_seconds=args.transition_timeout_minutes * 60.0,
                 poll_seconds=args.poll_seconds,
+                consecutive_samples=3,
+                activity_observed=True,
                 status_extra=timing_status,
             )
             completed_durations.append(time.monotonic() - cycle_started_monotonic)
