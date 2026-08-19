@@ -48,6 +48,54 @@ make -f makefile_task3 run
 
 手动 `Run` 会使用网页上选择的温度和湿度。
 
+## 网页上的分段 Thermal Cycle
+
+task3 的 `Thermal Cycle` 与 `AutoTest` 是两个独立流程。在 `Cycles` 中输入
+逻辑循环总数；如需自动IV2，在 `IV2 cycles` 中输入从1开始、用英文或中文
+逗号分隔的cycle编号，例如 `2,12,22`。
+
+执行顺序是：
+
+```text
+初始 IV1
+-> 等待两个露点都达到配置阈值
+-> 按计划执行 PLC thermal segments
+-> 在每个指定cycle中执行 IV2
+-> 每个segment结束后确认 PLC 稳定回到 Standby
+-> 最终 IV3
+```
+
+segment planner会减少PLC配置和START写入：
+
+- 不包含IV2的连续cycle合并成一个普通segment，使用`cycles=N`和
+  `idle_cold_min=10`。
+- 每个指定的IV2 cycle都是独立的单cycle segment，使用`cycles=1`和
+  `idle_cold_min=59`；相邻的IV2 cycle也不会合并。
+- 每个segment正常只完整调用一次`control_hmi.py`。runner随后验证PLC是否
+  接受START；第一次验证失败时最多再执行一次完整调用。
+
+例如，92个逻辑cycle并在
+`2,12,22,32,42,52,62,72,82,92`执行IV2，会生成20个segments，正常只需
+20次完整的PLC配置/START调用，而不是每个逻辑cycle调用一次。
+`control_hmi.py`内部原有的重试机制保持不变，因此这个数量不等于底层
+START bit的尝试次数。
+
+运行时PLC YAML保存在`MultiModuleTeststandUI/tmp_files/runtime/`；
+`PLC_toolkits_mqtt_NTU/HMI_Control_single_cycle.yml`只作为不可修改的模板。
+
+网页`Auto Batch Status`会显示batch、segment编号、全局cycle范围、已完成
+cycle、耗时、指定/下一个IV2 cycle、PLC状态、露点和错误信息。刷新或重新
+打开浏览器不会停止任务，但`app.py`进程和runner必须保持运行。
+
+停止这个流程必须使用专用的`Stop Thermal/AutoTest`按钮。原来的`Stop`
+按钮仍然只负责IV流程。workflow失败时不会自动向PLC发送STOP；操作员应先
+检查PLC实际状态，再在需要时明确使用专用停止按钮。
+
+长时间batch运行期间，不要停止或重启`app.py`，不要提交第二个workflow，
+也不要执行会改变工作区源码的Git操作，例如pull、checkout、rebase或merge。
+不改动已检出源码的commit/push可以安全执行，但操作后仍应确认`app.py`和
+runner的PID没有变化。
+
 ## 网页上的 AutoTest
 
 `AutoTest` 按钮用于从网页启动正式 full-batch 流程。
@@ -140,6 +188,7 @@ PLC status code 来自 `PLC_toolkits_mqtt_NTU/plc_io.py`：
 - `MultiModuleTeststandUI/makefile_task3`: 单次 IV scan。
 - `MultiModuleTeststandUI/scripts/run_full_mmts_batch_demo.py`: demo batch 自动化。
 - `MultiModuleTeststandUI/data/full_batch_demo.example.yml`: demo batch 配置。
+- `MultiModuleTeststandUI/scripts/run_selected_iv2_thermal_cycles.py`: 分段手动Thermal Cycle runner。
 - `PLC_toolkits_mqtt_NTU/control_hmi.py`: PLC/HMI 温循控制入口。
 - `PLC_toolkits_mqtt_NTU/plc_io.py`: PLC 读写和 status code 计算。
 

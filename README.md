@@ -50,6 +50,59 @@ make -f makefile_task3 run
 
 Manual `Run` uses the temperature and humidity selected on the web page.
 
+### Manual segmented Thermal Cycle
+
+The task3 `Thermal Cycle` workflow is separate from `AutoTest`. Enter the total
+number of logical cycles in `Cycles` and, optionally, a comma-separated list of
+1-based cycle numbers in `IV2 cycles`, for example `2,12,22`.
+
+The sequence is:
+
+```text
+initial IV1
+-> wait for both dewpoints to pass the configured threshold
+-> execute planned PLC thermal segments
+-> run IV2 during every selected cycle
+-> wait for stable PLC Standby after every segment
+-> final IV3
+```
+
+The segment planner reduces PLC configuration and START traffic:
+
+- Consecutive cycles that do not contain IV2 form one normal segment with
+  `cycles=N` and `idle_cold_min=10`.
+- Every selected IV2 cycle is a separate one-cycle segment with `cycles=1` and
+  `idle_cold_min=59`. Adjacent IV2 cycles are not merged.
+- Each segment normally needs one complete `control_hmi.py` invocation. The
+  runner validates that the PLC accepted START and permits at most one second
+  complete invocation if the first one fails validation.
+
+For example, 92 logical cycles with IV2 on
+`2,12,22,32,42,52,62,72,82,92` produce 20 segments and therefore normally 20
+complete PLC configuration/START invocations, instead of one invocation for
+every logical cycle. The internal retry behavior of `control_hmi.py` is
+unchanged, so this count is not the same as low-level START-bit attempts.
+
+Runtime PLC YAML files are generated under `MultiModuleTeststandUI/tmp_files/runtime/`.
+`PLC_toolkits_mqtt_NTU/HMI_Control_single_cycle.yml` is used only as an
+immutable template.
+
+The `Auto Batch Status` panel shows the batch, segment number, global cycle
+range, completed logical cycles, elapsed time, selected/next IV2 cycle, PLC
+state, dewpoints, and any error. Browser refreshes or reopening the page do not
+stop the workflow; the `app.py` process and the runner must remain alive.
+
+Use the dedicated `Stop Thermal/AutoTest` button to stop this workflow. The
+historical `Stop` button remains IV-only. A workflow failure does not
+automatically issue PLC STOP, so operators must inspect the PLC state and use
+the dedicated stop deliberately when required.
+
+For a long-running batch, do not stop/restart `app.py`, run another workflow,
+or perform source-changing Git operations such as pull, checkout, rebase, or
+merge. A commit or push that does not modify checked-out source files is safe,
+but should still be followed by verifying that the same app and runner PIDs
+remain active.
+
 Web-triggered formal batch automation:
 
 ```text
@@ -146,6 +199,7 @@ PLC status codes are computed in `PLC_toolkits_mqtt_NTU/plc_io.py`:
 - `MultiModuleTeststandUI/templates/index_task3.html`: task3 page UI.
 - `MultiModuleTeststandUI/makefile_task3`: manual IV scan make targets.
 - `MultiModuleTeststandUI/scripts/run_full_mmts_batch_demo.py`: demo batch automation.
+- `MultiModuleTeststandUI/scripts/run_selected_iv2_thermal_cycles.py`: segmented manual Thermal Cycle runner.
 - `PLC_toolkits_mqtt_NTU/control_hmi.py`: HMI thermal-cycle control.
 - `PLC_toolkits_mqtt_NTU/plc_io.py`: PLC read/write helpers and status-code logic.
 
