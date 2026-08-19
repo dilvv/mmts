@@ -540,7 +540,7 @@ fieldset.env-control legend {
           <button type="button" id="initBtn" class="ctrlbtn" onclick="initJob()">Initialize</button>
           <button type="button" id="confBtn" class="ctrlbtn" disabled>Configure</button>
           <button type="button" id="execBtn" class="ctrlbtn" onclick="execJob()" disabled>Run</button>
-          <button type="button" id="stopBtn" class="ctrlbtn danger" onclick="stopJob()" disabled>Stop</button>
+          <button type="button" id="stopBtn" class="ctrlbtn danger" onclick="stopJob()" title="Stops and cleans up a standalone IV run only." disabled>Stop</button>
           <button type="button" id="exitBtn" class="ctrlbtn secondary" onclick="exitJob()" disabled>Destroy</button>
         </div>
         <div class="batch-action-row">
@@ -568,6 +568,8 @@ fieldset.env-control legend {
               disabled>
             <button type="button" id="thermalCycleBtn" class="ctrlbtn" onclick="thermalCycleJob()" disabled>Thermal Cycle</button>
           </div>
+          <button type="button" id="thermalStopBtn" class="ctrlbtn danger" onclick="thermalStopJob()" title="Explicitly stops the PLC for AutoTest or Thermal Cycle. It is never triggered automatically." disabled>Stop Thermal/AutoTest</button>
+          <button type="button" id="iv1TestBtn" class="ctrlbtn" onclick="iv1TestJob()" disabled>IV1 Test</button>
           <button type="button" id="iv3TestBtn" class="ctrlbtn" onclick="iv3TestJob()" disabled>IV3 Test</button>
           <button type="button" id="clearModulesBtn" class="ctrlbtn secondary" onclick="clearModuleNumbers()" disabled>Clear Modules</button>
         </div>
@@ -873,16 +875,18 @@ function getElements() {
     exitBtn: document.getElementById("exitBtn"),
     statusText: document.getElementById("statusText"),
     autoTestBtn: document.getElementById("autoTestBtn"),
+    thermalStopBtn: document.getElementById("thermalStopBtn"),
     thermalCycleBtn: document.getElementById("thermalCycleBtn"),
     thermalCycleCount: document.getElementById("thermalCycleCount"),
     thermalCycleIv2Cycles: document.getElementById("thermalCycleIv2Cycles"),
+    iv1TestBtn: document.getElementById("iv1TestBtn"),
     iv3TestBtn: document.getElementById("iv3TestBtn"),
     clearModulesBtn: document.getElementById("clearModulesBtn"),
     inputs: document.querySelectorAll("#pymodule_configurations input.inputModuleID"),
   };
 }
 
-function applyButtonState(rule, status) {
+function applyButtonState(rule, status, batchStatus = {}, workflowOwner = null) {
   const elements = getElements();
 
   elements.initBtn.disabled = rule.init;
@@ -894,11 +898,20 @@ function applyButtonState(rule, status) {
   const batchReady = ["startup", "initialized", "configured", "idle", "stopped", "destroyed"].includes(status);
   const clearReady = batchReady || status === "error";
   elements.autoTestBtn.disabled = !batchReady;
+  elements.thermalStopBtn.disabled = !(
+    ["AutoTest", "ThermalCycle"].includes(workflowOwner) ||
+    batchStatus.thermal_stop_available === true
+  );
   elements.thermalCycleBtn.disabled = !batchReady;
   elements.thermalCycleCount.disabled = !batchReady;
   elements.thermalCycleIv2Cycles.disabled = !batchReady;
+  elements.iv1TestBtn.disabled = !batchReady;
   elements.iv3TestBtn.disabled = !batchReady;
   elements.clearModulesBtn.disabled = !clearReady;
+
+  if (["AutoTest", "ThermalCycle"].includes(workflowOwner)) {
+    elements.stopBtn.disabled = true;
+  }
 
   elements.inputs.forEach((input) => {
     input.disabled = rule.inputs;
@@ -914,9 +927,11 @@ function disableAllForOtherTask() {
   elements.stopBtn.disabled = true;
   elements.exitBtn.disabled = true;
   elements.autoTestBtn.disabled = true;
+  elements.thermalStopBtn.disabled = true;
   elements.thermalCycleBtn.disabled = true;
   elements.thermalCycleCount.disabled = true;
   elements.thermalCycleIv2Cycles.disabled = true;
+  elements.iv1TestBtn.disabled = true;
   elements.iv3TestBtn.disabled = true;
   elements.clearModulesBtn.disabled = true;
 
@@ -972,6 +987,32 @@ function updateBatchStatus(batchStatus = {}) {
   if (batchStatus.phase_state) lines.push(`phase state: ${batchStatus.phase_state}`);
   if (batchStatus.thermal_cycle_count !== undefined) {
     lines.push(`thermal cycles: ${batchStatus.thermal_cycle_count}`);
+  }
+  if (batchStatus.thermal_segment_index !== undefined) {
+    const startCycle = batchStatus.thermal_segment_start_cycle;
+    const endCycle = batchStatus.thermal_segment_end_cycle;
+    const range = startCycle === endCycle ? `${startCycle}` : `${startCycle}-${endCycle}`;
+    lines.push(
+      `segment: ${batchStatus.thermal_segment_index}/${batchStatus.thermal_segment_count} ` +
+      `(cycles ${range})`
+    );
+  }
+  if (batchStatus.thermal_completed_cycles !== undefined) {
+    lines.push(
+      `completed logical cycles: ${batchStatus.thermal_completed_cycles}/` +
+      `${batchStatus.thermal_cycle_count}`
+    );
+  }
+  if (batchStatus.thermal_segment_elapsed_seconds !== undefined) {
+    lines.push(`current segment elapsed: ${formatDuration(batchStatus.thermal_segment_elapsed_seconds)}`);
+  }
+  if (batchStatus.last_segment_duration_seconds !== null &&
+      batchStatus.last_segment_duration_seconds !== undefined) {
+    lines.push(`last complete segment: ${formatDuration(batchStatus.last_segment_duration_seconds)}`);
+  }
+  if (batchStatus.average_segment_duration_seconds !== null &&
+      batchStatus.average_segment_duration_seconds !== undefined) {
+    lines.push(`average segment time: ${formatDuration(batchStatus.average_segment_duration_seconds)}`);
   }
   if (batchStatus.thermal_cycle_current !== undefined) {
     lines.push(`current cycle: ${batchStatus.thermal_cycle_current}`);
@@ -1029,7 +1070,7 @@ async function updateStatus() {
     const rule = STATUS_RULES[data.status];
 
     if (rule) {
-      applyButtonState(rule, data.status);
+      applyButtonState(rule, data.status, data.batchStatus, data.workflowOwner);
     }
 
     updateBatchStatus(data.batchStatus);
@@ -1104,6 +1145,10 @@ async function runBatchButton(routeName, errorPrefix) {
 
 async function autoTestJob() {
   await runBatchButton("autotest", "AutoTest failed: ");
+}
+
+async function iv1TestJob() {
+  await runBatchButton("iv1test", "IV1 Test failed: ");
 }
 
 async function thermalCycleJob() {
@@ -1183,6 +1228,14 @@ async function iv3TestJob() {
 
 async function stopJob() {
   execjob("stop");
+}
+
+async function thermalStopJob() {
+  const confirmed = confirm(
+    "Explicitly stop the PLC for the active or failed AutoTest/Thermal Cycle?"
+  );
+  if (!confirmed) return;
+  execjob("thermal_stop");
 }
 
 async function exitJob() {

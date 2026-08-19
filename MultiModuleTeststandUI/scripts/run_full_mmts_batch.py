@@ -35,6 +35,82 @@ class IVInitializationError(RuntimeError):
     """Raised when IV hardware initialization fails before a scan starts."""
 
 
+class PLCCommunicationError(RuntimeError):
+    """Raised after bounded PLC snapshot retries have all failed."""
+
+
+class ReliablePLCSnapshotReader:
+    """Read PLC snapshots with bounded reconnect/retry outside the PLC toolkit."""
+
+    def __init__(
+        self,
+        plc_cfg,
+        max_attempts=3,
+        retry_seconds=2.0,
+        client_factory=create_client,
+        snapshot_reader=None,
+        sleep_func=time.sleep,
+    ):
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be positive.")
+        self.plc_cfg = plc_cfg
+        self.max_attempts = max_attempts
+        self.retry_seconds = retry_seconds
+        self.client_factory = client_factory
+        self.snapshot_reader = snapshot_reader or read_plc_snapshot
+        self.sleep_func = sleep_func
+        self.client = None
+
+    def disconnect(self):
+        client, self.client = self.client, None
+        if client is None:
+            return
+        try:
+            client.disconnect()
+        except Exception as error:
+            print(f"[PLCReadWarning] Failed to disconnect stale PLC client: {error}")
+
+    def _connect(self):
+        self.client = self.client_factory(self.plc_cfg)
+        if self.client is None:
+            raise ConnectionError("PLC client creation failed.")
+        try:
+            if not self.client.get_connected():
+                raise ConnectionError("PLC client is not connected.")
+        except AttributeError:
+            pass
+
+    @staticmethod
+    def _format_error(error):
+        message = str(error).strip()
+        if message.startswith("b'") and message.endswith("'"):
+            message = message[2:-1]
+        return " ".join(message.split())
+
+    def read(self):
+        last_error = None
+        for attempt in range(1, self.max_attempts + 1):
+            try:
+                if self.client is None:
+                    self._connect()
+                return self.snapshot_reader(self.client, self.plc_cfg)
+            except (ConnectionError, OSError, RuntimeError, TimeoutError) as error:
+                last_error = error
+                detail = self._format_error(error)
+                print(
+                    f"[PLCReadWarning] PLC snapshot attempt {attempt}/"
+                    f"{self.max_attempts} failed: {detail}"
+                )
+                self.disconnect()
+                if attempt < self.max_attempts:
+                    self.sleep_func(self.retry_seconds)
+
+        detail = self._format_error(last_error)
+        raise PLCCommunicationError(
+            f"PLC communication failed after {self.max_attempts} attempts: {detail}"
+        ) from last_error
+
+
 def now_iso():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
@@ -96,6 +172,12 @@ def read_plc_snapshot(client, plc_cfg):
     }
 
 
+def read_reliable_plc_snapshot(client, plc_cfg):
+    if isinstance(client, ReliablePLCSnapshotReader):
+        return client.read()
+    return read_plc_snapshot(client, plc_cfg)
+
+
 def run_command(command, cwd, status_file, stage, summary, env=None):
     update_status({
         "phase": stage,
@@ -153,7 +235,7 @@ def wait_for_condition(
     deadline = time.time() + timeout_seconds
     last_snapshot = None
     while time.time() < deadline:
-        snapshot = read_plc_snapshot(client, plc_cfg)
+        snapshot = read_reliable_plc_snapshot(client, plc_cfg)
         last_snapshot = snapshot
         status_payload = {
             "phase": name,
@@ -206,7 +288,7 @@ def wait_for_status_transition(
     observed_seen = seen_already
     last_snapshot = None
     while time.time() < deadline:
-        snapshot = read_plc_snapshot(client, plc_cfg)
+        snapshot = read_reliable_plc_snapshot(client, plc_cfg)
         last_snapshot = snapshot
         if snapshot["plc_status_code"] == seen_code:
             observed_seen = True
@@ -260,7 +342,7 @@ def wait_for_stable_status_code(
     deadline = time.time() + timeout_seconds
     last_snapshot = None
     while time.time() < deadline:
-        snapshot = read_plc_snapshot(client, plc_cfg)
+        snapshot = read_reliable_plc_snapshot(client, plc_cfg)
         last_snapshot = snapshot
         status_payload = {
             "phase": name,
@@ -306,21 +388,22 @@ def main():
         "batch": cfg["batch"],
         "phase": "startup",
         "phase_state": "starting",
+        "workflow_type": "autotest",
+        "thermal_stop_available": True,
         "phase_summary": "Preparing full MMTS batch automation.",
         "module_ids": cfg["module_ids"],
         "populated_module_count": cfg["populated_module_count"],
     }, path=args.status_file)
 
-    client = create_client(plc_runtime_cfg)
-    if not client or not client.get_connected():
-        raise RuntimeError("Unable to connect to PLC for automation runner.")
+    client = ReliablePLCSnapshotReader(plc_runtime_cfg)
 
     precheck = cfg.get("precheck", {})
     cycle_cfg = cfg.get("cycle_configs", {})
     iv_scans = cfg.get("iv_scans", {})
 
+    plc_cycle_started = False
     try:
-        snapshot = read_plc_snapshot(client, plc_runtime_cfg)
+        snapshot = read_reliable_plc_snapshot(client, plc_runtime_cfg)
         update_status({
             "status": "running",
             "phase": "precheck",
@@ -344,6 +427,7 @@ def main():
                 poll_seconds=args.poll_seconds,
             )
 
+        plc_cycle_started = True
         run_cycle("cycle1_start", cycle_cfg.get("first_cycle", "HMI_Control.yml"), args.status_file)
         wait_for_status_code(
             name="cycle1_started",
@@ -379,6 +463,7 @@ def main():
             activity_observed=True,
         )
 
+        plc_cycle_started = True
         run_cycle("cycle2to6_start", cycle_cfg.get("remaining_cycles", "HMI_Control_5cycle.yml"), args.status_file)
         wait_for_status_code(
             name="cycle2to6_started",
@@ -406,6 +491,7 @@ def main():
             "status": "completed",
             "phase": "done",
             "phase_state": "completed",
+            "thermal_stop_available": False,
             "phase_summary": "Full MMTS batch completed.",
             "finished_at": now_iso(),
         }, path=args.status_file)
@@ -414,6 +500,7 @@ def main():
             "status": "error",
             "phase_state": "error",
             "error_message": str(exc),
+            "thermal_stop_available": plc_cycle_started,
             "finished_at": now_iso(),
         }, path=args.status_file)
         raise

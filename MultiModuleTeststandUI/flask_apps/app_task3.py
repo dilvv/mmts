@@ -142,8 +142,7 @@ def build_autotest_config(confDICT:dict):
     os.makedirs(runtime_dir, exist_ok=True)
     runtime_config = os.path.join(runtime_dir, 'full_batch_web.yml')
 
-    with open('data/full_batch_config.example.yml', 'r', encoding='utf-8') as fin:
-        cfg = yaml.safe_load(fin)
+    cfg = load_batch_template()
     cfg['module_ids'] = module_ids_from_conf(confDICT)
     cfg['batch'] = new_batch_id()
 
@@ -152,9 +151,13 @@ def build_autotest_config(confDICT:dict):
     return runtime_config
 
 
-def build_batch_iv_command(scan_name:str, confDICT:dict):
+def load_batch_template():
     with open('data/full_batch_config.example.yml', 'r', encoding='utf-8') as fin:
-        cfg = yaml.safe_load(fin)
+        return yaml.safe_load(fin)
+
+
+def build_batch_iv_command(scan_name:str, confDICT:dict):
+    cfg = load_batch_template()
     scan_cfg = cfg['iv_scans'][scan_name]
     batch_id = new_batch_id()
     CONF_DICT['batch'] = batch_id
@@ -217,6 +220,24 @@ def build_plc_stop_command():
     ])
 
 
+def thermal_stop_is_available(batch_status):
+    if 'thermal_stop_available' in batch_status:
+        return batch_status.get('thermal_stop_available') is True
+    known_thermal_runner = batch_status.get('runner') in [
+        'run_full_mmts_batch.py',
+        'run_selected_iv2_thermal_cycles.py',
+    ]
+    legacy_plc_started = (
+        'control_hmi.py' in str(batch_status.get('last_command', ''))
+        or batch_status.get('plc', {}).get('plc_status_code') not in [None, 1]
+    )
+    return (
+        known_thermal_runner
+        and batch_status.get('status') == 'error'
+        and (batch_status.get('plc_stop_possible') is True or legacy_plc_started)
+    )
+
+
 
 #logger = logging.getLogger('flask.app')
 logger = logging.getLogger('werkzeug')
@@ -230,8 +251,10 @@ job_stop_flags = {
         'Run': threading.Event(),
         'AutoTest': threading.Event(),
         'ThermalCycle': threading.Event(),
+        'IV1Test': threading.Event(),
         'IV3Test': threading.Event(),
         'Stop': threading.Event(),
+        'ThermalStop': threading.Event(),
         'Destroy': threading.Event(),
         }
 
@@ -258,8 +281,10 @@ job_thread = {
         'Run': None,
         'AutoTest': None,
         'ThermalCycle': None,
+        'IV1Test': None,
         'IV3Test': None,
         'Stop': None,
+        'ThermalStop': None,
         'Destroy': None,
         }
 job_process = {name: None for name in job_thread}
@@ -315,9 +340,12 @@ def set_thread(runTYPE, tHREAD:threading.Thread):
 
 
 
-def set_server_status(newSTAT):
+def set_server_status(newSTAT, allow_stop_from_error=False):
     if shared_state.server_status == 'error': ## if error
-        if newSTAT not in [ 'destroying', ]:
+        allowed = ['destroying']
+        if allow_stop_from_error:
+            allowed.append('stopping')
+        if newSTAT not in allowed:
             return
 
     shared_state.server_status = newSTAT
@@ -584,6 +612,7 @@ def auto_destroy_after_failure(status_path, phase, reason):
         'phase': phase,
         'phase_state': 'destroying',
         'phase_summary': f'{reason}; running destroy automatically.',
+        'error_message': reason,
     }, path=status_path)
 
     job_stop_flags['Destroy'].clear()
@@ -596,8 +625,25 @@ def auto_destroy_after_failure(status_path, phase, reason):
         'phase': phase,
         'phase_state': 'destroyed' if destroyed else 'error',
         'phase_summary': f'{reason}; destroy command finished.',
+        'error_message': reason,
     }, path=status_path)
     return destroy_returncode
+
+
+def record_thermal_cycle_failure(status_path, returncode):
+    """Preserve the runner's concise root cause without issuing PLC commands."""
+    batch_status = read_status(path=status_path)
+    runner_error = str(batch_status.get('error_message', '')).strip()
+    update_status({
+        'status': 'error',
+        'phase_state': 'error',
+        'thermal_stop_available': bool(
+            batch_status.get('thermal_stop_available', False)
+        ),
+        'error_message': (
+            runner_error or f'Thermal cycle failed with exit code {returncode}.'
+        ),
+    }, path=status_path)
 
 
 @app.route('/clear_modules', methods=['POST'])
@@ -695,6 +741,10 @@ def AutoTest():
         status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
         try:
             config_path = build_autotest_config(CONF_DICT)
+            update_status({
+                'workflow_type': 'autotest',
+                'thermal_stop_available': True,
+            }, path=status_path)
             command = (
                 f'{sys.executable} scripts/run_full_mmts_batch.py '
                 f'-c {config_path} --status-file {status_path}'
@@ -703,15 +753,89 @@ def AutoTest():
             if returncode != 0 and not job_stop_flags[CMD_ID].is_set():
                 batch_status = read_status(path=status_path)
                 phase = str(batch_status.get('phase', 'autotest'))
+                runner_error = str(batch_status.get('error_message', '')).strip()
                 auto_destroy_after_failure(
                     status_path,
                     phase,
-                    f'AutoTest failed with exit code {returncode}',
+                    runner_error or f'AutoTest failed with exit code {returncode}',
                 )
         except Exception as error:
             logger.exception('[AutoTest] unexpected failure')
             if not job_stop_flags[CMD_ID].is_set():
                 auto_destroy_after_failure(status_path, 'autotest', f'AutoTest failed: {error}')
+        finally:
+            if shared_state.server_status not in ['error', 'destroyed', 'destroying', 'stopping', 'stopped']:
+                set_server_status('idle')
+            shared_state.hardware_workflow_guard.release(CMD_ID)
+
+    try:
+        thread = threading.Thread(target=background_worker)
+        thread.start()
+        set_thread(CMD_ID, thread)
+    except Exception:
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        raise
+    return '', 204
+
+
+@app.route('/iv1test', methods=['POST'])
+def IV1Test():
+    CMD_ID = 'IV1Test'
+    if not check_jobmode():
+        return '', 204
+
+    allowed_statuses = ['startup', 'initialized', 'configured', 'idle', 'stopped', 'destroyed']
+    if shared_state.server_status not in allowed_statuses:
+        return jsonify({
+            'status': 'error',
+            'errors': f'Cannot start IV1Test while server status is {shared_state.server_status}.',
+        }), 409
+    if not shared_state.hardware_workflow_guard.try_acquire(CMD_ID):
+        return hardware_workflow_busy_response(CMD_ID)
+    ok, errors = save_module_ids_from_json(request.get_json())
+    if not ok:
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        return jsonify({'status': 'error', 'errors': errors}), 400
+    if not any(module_ids_from_conf(CONF_DICT).values()):
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        return jsonify({'status': 'error', 'errors': 'No module IDs configured for IV1Test.'}), 400
+
+    job_stop_flags[CMD_ID].clear()
+    set_server_status('running')
+
+    def background_worker():
+        status_path = os.path.join('tmp_files', 'runtime', 'current_batch_status.json')
+        try:
+            update_status({
+                'status': 'running',
+                'phase': 'iv1_manual',
+                'phase_state': 'running',
+                'workflow_type': 'iv1_manual',
+                'thermal_stop_available': False,
+                'phase_summary': 'Running manual first IV test from web button.',
+            }, path=status_path)
+            returncode = run_command(build_batch_iv_command('iv1', CONF_DICT), CMD_ID)
+            if returncode == 0:
+                update_status({
+                    'status': 'completed',
+                    'phase': 'iv1_manual',
+                    'phase_state': 'completed',
+                    'phase_summary': 'Manual first IV test completed.',
+                }, path=status_path)
+            elif not job_stop_flags[CMD_ID].is_set():
+                auto_destroy_after_failure(
+                    status_path,
+                    'iv1_manual',
+                    f'Manual first IV test failed with exit code {returncode}',
+                )
+        except Exception as error:
+            logger.exception('[IV1Test] unexpected failure')
+            if not job_stop_flags[CMD_ID].is_set():
+                auto_destroy_after_failure(
+                    status_path,
+                    'iv1_manual',
+                    f'Manual first IV test failed: {error}',
+                )
         finally:
             if shared_state.server_status not in ['error', 'destroyed', 'destroying', 'stopping', 'stopped']:
                 set_server_status('idle')
@@ -759,6 +883,8 @@ def IV3Test():
                 'status': 'running',
                 'phase': 'iv3_manual',
                 'phase_state': 'running',
+                'workflow_type': 'iv3_manual',
+                'thermal_stop_available': False,
                 'phase_summary': 'Running manual third IV test from web button.',
             }, path=status_path)
             returncode = run_command(build_batch_iv_command('iv3', CONF_DICT), CMD_ID)
@@ -854,17 +980,16 @@ def ThermalCycle():
         }), 500
     if not shared_state.hardware_workflow_guard.try_acquire(CMD_ID):
         return hardware_workflow_busy_response(CMD_ID)
-    if iv2_cycles:
-        ok, errors = save_module_ids_from_json(json_data)
-        if not ok:
-            shared_state.hardware_workflow_guard.release(CMD_ID)
-            return jsonify({'status': 'error', 'errors': errors}), 400
-        if not any(module_ids_from_conf(CONF_DICT).values()):
-            shared_state.hardware_workflow_guard.release(CMD_ID)
-            return jsonify({
-                'status': 'error',
-                'errors': 'Enter at least one module ID before selecting IV2 cycles.',
-            }), 400
+    ok, errors = save_module_ids_from_json(json_data)
+    if not ok:
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        return jsonify({'status': 'error', 'errors': errors}), 400
+    if not any(module_ids_from_conf(CONF_DICT).values()):
+        shared_state.hardware_workflow_guard.release(CMD_ID)
+        return jsonify({
+            'status': 'error',
+            'errors': 'Enter at least one module ID before starting a thermal cycle.',
+        }), 400
 
     job_stop_flags[CMD_ID].clear()
     set_server_status('running')
@@ -881,8 +1006,7 @@ def ThermalCycle():
                 dir=runtime_dir,
             )
             os.close(config_fd)
-            with open('data/full_batch_config.example.yml', 'r', encoding='utf-8') as fin:
-                batch_cfg = yaml.safe_load(fin)
+            batch_cfg = load_batch_template()
             workflow_cfg = {
                 'batch': new_batch_id(),
                 'total_cycles': cycle_count,
@@ -892,7 +1016,9 @@ def ThermalCycle():
                 'base_cycle_config': cycle_config_template,
                 'dewpoint_max_C': batch_cfg.get('precheck', {}).get('dewpoint_max_C', -30),
                 'module_ids': module_ids_from_conf(CONF_DICT),
+                'iv1_scan': batch_cfg['iv_scans']['iv1'],
                 'iv2_scan': batch_cfg['iv_scans']['iv2'],
+                'iv3_scan': batch_cfg['iv_scans']['iv3'],
             }
             with open(runtime_workflow_config, 'w', encoding='utf-8') as fout:
                 yaml.safe_dump(workflow_cfg, fout, sort_keys=False)
@@ -901,9 +1027,11 @@ def ThermalCycle():
                 'status': 'running',
                 'phase': 'thermal_cycle',
                 'phase_state': 'running',
+                'workflow_type': 'thermal_cycle',
+                'thermal_stop_available': True,
                 'phase_summary': (
-                    f'Running {cycle_count} PLC thermal cycles. '
-                    f'Automatic IV2 cycles: {iv2_cycles or "none"}.'
+                    f'Running {cycle_count} logical thermal cycles as PLC segments. '
+                    f'Automatic IV2 cycles: {iv2_cycles or "none"}; final IV3 enabled.'
                 ),
                 'thermal_cycle_count': cycle_count,
                 'iv2_cycles': iv2_cycles,
@@ -922,33 +1050,31 @@ def ThermalCycle():
                     'status': 'stopped',
                     'phase': 'thermal_cycle',
                     'phase_state': 'stopped',
+                    'thermal_stop_available': False,
                     'phase_summary': 'Standalone PLC thermal cycle was stopped.',
                 }, path=status_path)
             elif returncode == 0:
                 update_status({
                     'status': 'completed',
-                    'phase': 'thermal_cycle',
+                    'phase': 'done',
                     'phase_state': 'completed',
+                    'thermal_stop_available': False,
                     'phase_summary': (
                         f'Completed {cycle_count} thermal cycles; '
-                        f'IV2 ran on {len(iv2_cycles)} selected cycle(s).'
+                        f'IV2 ran on {len(iv2_cycles)} selected cycle(s); final IV3 completed.'
                     ),
                     'thermal_cycle_count': cycle_count,
                     'iv2_cycles': iv2_cycles,
                 }, path=status_path)
             elif not job_stop_flags[CMD_ID].is_set():
-                update_status({
-                    'status': 'error',
-                    'phase': 'thermal_cycle',
-                    'phase_state': 'error',
-                    'error_message': f'Thermal cycle failed with exit code {returncode}.',
-                }, path=status_path)
+                record_thermal_cycle_failure(status_path, returncode)
         except Exception as error:
             logger.exception('[ThermalCycle] unexpected failure')
             update_status({
                 'status': 'error',
                 'phase': 'thermal_cycle',
                 'phase_state': 'error',
+                'thermal_stop_available': False,
                 'error_message': f'Thermal cycle failed: {error}',
             }, path=status_path)
             set_server_status('error')
@@ -975,39 +1101,99 @@ def Stop():
     if not check_jobmode(): return '', 204
     CMD_ID = 'Stop'
 
+    if shared_state.hardware_workflow_guard.owner in ['AutoTest', 'ThermalCycle']:
+        return jsonify({
+            'status': 'error',
+            'errors': 'Use Stop Thermal/AutoTest for the active thermal workflow.',
+        }), 409
+
     set_server_status('stopping')
-    stop_running_jobs(['Run', 'AutoTest', 'ThermalCycle', 'IV3Test'])
+    iv_jobs = ['Run', 'IV1Test', 'IV3Test']
+    stop_running_jobs(iv_jobs)
     current_app.logger.debug(f'[ServerAction][Stop] set job_stop_flags as True')
 
     os.system('pkill -f "make -f makefile_task3" 2>/dev/null')
-    os.system('pkill -f "scripts/run_full_mmts_batch.py" 2>/dev/null')
-    os.system('pkill -f "control_hmi.py" 2>/dev/null')
-    join_job_threads(['Run', 'AutoTest', 'ThermalCycle', 'IV3Test'])
+    join_job_threads(iv_jobs)
 
-    ## after command Run finished, reset the flag
-    job_stop_flags['Run'].clear()
-    job_stop_flags['AutoTest'].clear()
-    job_stop_flags['ThermalCycle'].clear()
-    job_stop_flags['IV3Test'].clear()
+    for job_id in iv_jobs:
+        job_stop_flags[job_id].clear()
     job_stop_flags['Stop'].clear()
 
     def background_worker():
-        plc_returncode = run_command(build_plc_stop_command(), CMD_ID)
         iv_returncode = run_command(ExecCMD(CMD_ID, CONF_DICT), CMD_ID)
-        if plc_returncode == 0 and iv_returncode == 0:
+        if iv_returncode == 0:
             set_server_status('stopped')
-            logger.info("Operator-requested PLC and IV cleanup completed.")
+            logger.info("Historical IV Stop cleanup completed.")
         else:
             set_server_status('error')
-            logger.error(
-                f'Operator Stop cleanup failed: PLC={plc_returncode}, IV={iv_returncode}'
-            )
+            logger.error(f'Historical IV Stop cleanup failed: IV={iv_returncode}')
         logger.info('background worker ended')
 
     t = threading.Thread(target=background_worker)
     t.start()
     t.join() # direct run without accept other command
 
+    return '', 204
+
+
+@app.route('/thermal_stop', methods=['POST'])
+def ThermalStop():
+    """Explicitly stop AutoTest/ThermalCycle PLC control; never called automatically."""
+    if not check_jobmode():
+        return '', 204
+    CMD_ID = 'ThermalStop'
+    try:
+        batch_status = read_status()
+    except (OSError, ValueError):
+        batch_status = {}
+    owner = shared_state.hardware_workflow_guard.owner
+    if owner not in ['AutoTest', 'ThermalCycle'] and not thermal_stop_is_available(
+            batch_status):
+        return jsonify({
+            'status': 'error',
+            'errors': 'No active or failed AutoTest/Thermal Cycle requires a PLC stop.',
+        }), 409
+
+    set_server_status('stopping', allow_stop_from_error=True)
+    thermal_jobs = ['AutoTest', 'ThermalCycle']
+    stop_running_jobs(thermal_jobs)
+    join_job_threads(thermal_jobs)
+    for job_id in thermal_jobs:
+        job_stop_flags[job_id].clear()
+    job_stop_flags[CMD_ID].clear()
+
+    phase = str(batch_status.get('phase', ''))
+    iv_cleanup_needed = (
+        batch_status.get('workflow_type') in ['autotest', 'thermal_cycle']
+        and phase.startswith(('iv1', 'iv2', 'iv3'))
+    )
+    plc_returncode = run_command(build_plc_stop_command(), CMD_ID)
+    iv_returncode = (
+        run_command(ExecCMD('Stop', CONF_DICT), CMD_ID)
+        if iv_cleanup_needed else 0
+    )
+    if plc_returncode == 0 and iv_returncode == 0:
+        set_server_status('stopped')
+        update_status({
+            'status': 'stopped',
+            'phase_state': 'stopped',
+            'thermal_stop_available': False,
+            'phase_summary': (
+                'Operator-requested Thermal/AutoTest PLC stop completed'
+                f'{" with IV cleanup" if iv_cleanup_needed else ""}.'
+            ),
+        })
+    else:
+        set_server_status('error')
+        update_status({
+            'status': 'error',
+            'phase_state': 'error',
+            'thermal_stop_available': plc_returncode != 0,
+            'error_message': (
+                f'Thermal/AutoTest Stop failed: PLC={plc_returncode}, '
+                f'IV={iv_returncode}'
+            ),
+        })
     return '', 204
 
 @app.route('/destroy', methods=['POST'])
@@ -1019,11 +1205,11 @@ def Destroy():
         set_server_status('destroying')
         for name, flag in job_stop_flags.items(): flag.set()
         current_app.logger.debug(f'[ServerAction][{CMD_ID}] set ALL job_stop_flags as True')
-        stop_running_jobs(['Init', 'Run', 'AutoTest', 'ThermalCycle', 'IV3Test', 'Stop'])
+        stop_running_jobs(['Init', 'Run', 'AutoTest', 'ThermalCycle', 'IV1Test', 'IV3Test', 'Stop'])
         os.system('pkill -f "make -f makefile_task3" 2>/dev/null')
         os.system('pkill -f "scripts/run_full_mmts_batch.py" 2>/dev/null')
         os.system('pkill -f "control_hmi.py" 2>/dev/null')
-        join_job_threads(['Init', 'Run', 'AutoTest', 'ThermalCycle', 'IV3Test', 'Stop'])
+        join_job_threads(['Init', 'Run', 'AutoTest', 'ThermalCycle', 'IV1Test', 'IV3Test', 'Stop'])
 
         ## after command Run finished, reset the flag
         for name, flag in job_stop_flags.items(): flag.clear()
@@ -1067,9 +1253,11 @@ def status():
             'phase_state': 'error',
             'error_message': str(error),
         }
+    batch_status['thermal_stop_available'] = thermal_stop_is_available(batch_status)
     return jsonify({
         'status': shared_state.server_status,
         'jobmode': shared_state.jobmode,
+        'workflowOwner': shared_state.hardware_workflow_guard.owner,
         'DAQres': daq_result_dirs,
         'batchStatus': batch_status,
     })
